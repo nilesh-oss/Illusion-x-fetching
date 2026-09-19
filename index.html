@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>ILLUSION X FETCHING</title>
+<link rel="icon" id="dynamic-favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff0033'/></svg>"/>
+<meta name="description" id="dynamic-description" content="Advanced multi-source OSINT fetching platform."/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="shared.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;margin:0;padding:0;background:#120507;color:#f0e6e8;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;}
+  body{overscroll-behavior-y:none;overflow-y:auto;overflow-x:hidden;}
+  .pt-safe{padding-top:env(safe-area-inset-top,0px);}
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,0,51,0.4);border-radius:3px;}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;line-height:1;}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  #loading-screen{position:fixed;inset:0;z-index:9999;background:#0a0507;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity .6s ease,visibility .6s ease;}
+  #loading-screen.hide{opacity:0;visibility:hidden;pointer-events:none;}
+  .ldr-wrap{position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center;}
+  .ldr-ring{position:absolute;border-radius:50%;border:3px solid transparent;}
+  .ldr-ring.outer{width:200px;height:200px;border-top-color:#ff0033;border-right-color:#ff0033;
+    animation:spinCW 1.4s linear infinite;box-shadow:0 0 24px rgba(255,0,51,.4);}
+  .ldr-ring.inner{width:150px;height:150px;border-bottom-color:#ff4d6d;border-left-color:#ff4d6d;
+    animation:spinCCW 1s linear infinite;box-shadow:0 0 18px rgba(255,77,109,.4);}
+  @keyframes spinCW{to{transform:rotate(360deg);}}
+  @keyframes spinCCW{to{transform:rotate(-360deg);}}
+  .ldr-img{width:90px;height:90px;border-radius:50%;object-fit:cover;
+    border:2px solid rgba(255,0,51,.6);box-shadow:0 0 30px rgba(255,0,51,.6);background:#0f0809;
+    transition:width .3s,height .3s;}
+  .ldr-title{margin-top:28px;font-family:'Space Grotesk',sans-serif;font-size:1.1rem;
+    letter-spacing:.4em;color:#ffd0d8;text-shadow:0 0 18px rgba(255,0,51,.7);}
+  .ldr-sub{margin-top:8px;font-size:.7rem;letter-spacing:.3em;color:#7d5c61;}
+
+  #app-header{animation:headerDrop .55s cubic-bezier(0.16,1,0.3,1) both;}
+  @keyframes headerDrop{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+  #status-text{display:inline-block;transition:opacity .25s,transform .25s;}
+  #status-text.swap{opacity:0;transform:translateY(4px);}
+
+  @keyframes idleBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+  @keyframes thinkPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 10px #ff0066)}50%{transform:scale(1.06);filter:drop-shadow(0 0 24px #ff0044)}}
+  .hud[data-state="idle"] #orb-core{animation:idleBreathe 3.2s ease-in-out infinite;}
+  .hud[data-state="thinking"] #orb-core{animation:thinkPulse 1.2s ease-in-out infinite;}
+
+  @keyframes bubbleIn{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .bubble{animation:bubbleIn .3s cubic-bezier(0.16,1,0.3,1) both;}
+
+  .num-input{width:100%;background:rgba(10,5,7,.75);border:1px solid rgba(255,0,51,.35);
+    color:#f0e6e8;font-size:1rem;padding:14px 16px;border-radius:12px;outline:none;
+    font-family:'Space Grotesk',sans-serif;letter-spacing:.03em;user-select:text;-webkit-user-select:text;}
+  .num-input:focus{border-color:#ff0033;box-shadow:0 0 0 3px rgba(255,0,51,.15);}
+  .num-input::placeholder{color:#7d5c61;}
+
+  .btn-primary{width:100%;padding:14px;border-radius:12px;border:none;
+    background:linear-gradient(90deg,#ff0033,#ff4d6d);color:#1a0005;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.95rem;
+    letter-spacing:.08em;cursor:pointer;transition:transform .15s;
+    box-shadow:0 0 20px rgba(255,0,51,.35);}
+  .btn-primary:active{transform:scale(.97);}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-tg{background:linear-gradient(90deg,#ffbe4d,#ff8a3d)!important;}
+  .btn-tg-msg{background:linear-gradient(90deg,#ff4d6d,#ff0066)!important;}
+
+  .feature-box{width:100%;background:linear-gradient(180deg,rgba(30,15,18,.75),rgba(12,6,8,.75));
+    border:1px solid rgba(255,0,51,.25);border-left:3px solid #ff0033;
+    border-radius:10px 14px 14px 10px;padding:14px;margin-bottom:14px;
+    animation:bubbleIn .35s cubic-bezier(0.16,1,0.3,1) both;position:relative;}
+  .feature-box.locked{opacity:.55;filter:grayscale(.5);}
+  .feature-box.locked .fb-body{pointer-events:none;}
+  .feature-box .fb-title{display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;
+    font-size:.8rem;font-weight:700;letter-spacing:.08em;color:#ffd0d8;text-transform:uppercase;margin-bottom:10px;}
+  .feature-box .fb-title .material-symbols-outlined{font-size:16px;color:#ff4d6d;}
+  .feature-box .fb-hint{font-size:.7rem;color:#7d5c61;margin-top:6px;line-height:1.5;}
+  .feature-box .fb-lock-badge{font-size:.65rem;color:#ff3355;margin-top:6px;font-weight:600;}
+  .feature-box.tg{border-left-color:#ffbe4d;}
+  .feature-box.tg .fb-title .material-symbols-outlined{color:#ffbe4d;}
+  .feature-box.fbapi{border-left-color:#ff4d6d;}
+
+  .result-card{background:rgba(36,21,24,.7);border:1px solid rgba(61,42,45,.6);
+    border-left:3px solid #ff0033;border-radius:12px;padding:14px;margin-bottom:10px;}
+  .result-card .row{display:flex;justify-content:space-between;padding:6px 0;font-size:.82rem;gap:10px;}
+  .result-card .k{color:#c9a3a8;font-weight:500;}
+  .result-card .v{color:#f0e6e8;font-weight:600;text-align:right;word-break:break-word;}
+
+  .entry-card{background:rgba(36,21,24,.6);border:1px solid rgba(255,0,51,.2);
+    border-radius:12px;padding:12px;margin-bottom:10px;position:relative;}
+  .entry-card .num{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.95rem;color:#ff4d6d;padding-right:60px;word-break:break-all;}
+  .entry-card .meta{font-size:.72rem;color:#7d5c61;margin-top:2px;word-break:break-word;}
+  .entry-card .src{position:absolute;top:10px;right:10px;font-size:.58rem;font-weight:700;padding:3px 7px;border-radius:5px;}
+  .entry-card .src.db{background:rgba(255,0,51,.15);color:#ff8aa3;border:1px solid rgba(255,0,51,.3);}
+  .entry-card .src.fb{background:rgba(255,190,77,.12);color:#ffbe4d;border:1px solid rgba(255,190,77,.3);}
+  .entry-card .kind{position:absolute;bottom:10px;right:10px;font-size:.55rem;font-weight:700;color:#7d5c61;}
+  .entry-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .entry-actions button{flex:1;min-width:70px;padding:7px;border-radius:8px;border:1px solid rgba(255,0,51,.3);
+    background:rgba(255,0,51,.06);color:#ffd0d8;font-size:.7rem;font-weight:600;cursor:pointer;transition:transform .15s;}
+  .entry-actions button:active{transform:scale(.94);}
+  .entry-actions .del{border-color:rgba(255,51,85,.4);color:#ff3355;}
+
+  .setup-banner{background:rgba(255,0,51,.08);border:1px solid rgba(255,0,51,.3);
+    border-radius:12px;padding:14px;margin-bottom:14px;font-size:.82rem;color:#ffd0d8;line-height:1.5;}
+
+  .settings-btn{position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+    background:rgba(36,21,24,.85);border:1px solid rgba(255,0,51,.35);border-radius:10px;cursor:pointer;padding:0;transition:transform .15s;}
+  .settings-btn:active{transform:scale(.92);background:rgba(255,0,51,.2);}
+  .settings-btn .material-symbols-outlined{font-size:20px;color:#ff0033;}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(5,2,3,.85);backdrop-filter:blur(8px);
+    z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;
+    opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease;}
+  .modal-backdrop.show{opacity:1;visibility:visible;}
+  .modal-card{width:100%;max-width:380px;background:linear-gradient(180deg,rgba(30,15,18,.98),rgba(15,8,9,.98));
+    border:1px solid rgba(255,0,51,.4);border-radius:16px;padding:24px;
+    box-shadow:0 0 60px rgba(255,0,51,.35);
+    transform:scale(.92);transition:transform .3s cubic-bezier(0.16,1,0.3,1);}
+  .modal-backdrop.show .modal-card{transform:scale(1);}
+  .modal-icon{width:56px;height:56px;border-radius:50%;margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle,rgba(255,0,51,.2),rgba(255,0,51,.05));
+    border:1px solid rgba(255,0,51,.4);box-shadow:0 0 24px rgba(255,0,51,.5);}
+  .modal-icon .material-symbols-outlined{font-size:28px;color:#ff0033;}
+  .modal-title{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;
+    text-align:center;color:#ffd0d8;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+  .modal-sub{font-size:.78rem;text-align:center;color:#c9a3a8;line-height:1.5;margin-bottom:20px;}
+  .modal-input{width:100%;background:rgba(10,5,7,.9);border:1px solid rgba(255,0,51,.4);
+    color:#f0e6e8;font-size:1rem;padding:14px 16px;border-radius:11px;outline:none;
+    font-family:'Space Grotesk',sans-serif;letter-spacing:.15em;text-align:center;
+    user-select:text;-webkit-user-select:text;}
+  .modal-input:focus{border-color:#ff0033;box-shadow:0 0 0 3px rgba(255,0,51,.2);}
+  .modal-err{font-size:.74rem;color:#ff3355;text-align:center;margin-top:10px;min-height:18px;font-weight:600;}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .modal-btn{flex:1;padding:12px;border-radius:11px;border:none;font-family:'Space Grotesk',sans-serif;
+    font-weight:700;font-size:.82rem;letter-spacing:.08em;cursor:pointer;transition:transform .15s;}
+  .modal-btn:active{transform:scale(.96);}
+  .modal-btn.primary{background:linear-gradient(90deg,#ff0033,#ff4d6d);color:#1a0005;}
+  .modal-btn.ghost{background:rgba(255,0,51,.08);color:#ffd0d8;border:1px solid rgba(255,0,51,.3);}
+  .modal-forgot{text-align:center;margin-top:14px;font-size:.74rem;color:#ff4d6d;cursor:pointer;font-weight:600;text-decoration:underline;}
+  .modal-attempts{font-size:.68rem;color:#7d5c61;text-align:center;margin-top:8px;font-family:monospace;}
+  .modal-countdown{font-family:monospace;font-size:1.4rem;color:#ff3355;text-align:center;font-weight:700;margin-top:10px;}
+
+  .side-panel{position:fixed;top:0;right:-100%;width:88%;max-width:360px;height:100%;
+    background:linear-gradient(180deg,rgba(20,10,12,.98),rgba(10,5,7,.98));
+    border-left:1px solid rgba(255,0,51,.35);z-index:4000;
+    transition:right .35s cubic-bezier(0.16,1,0.3,1);overflow-y:auto;display:flex;flex-direction:column;}
+  .side-panel.open{right:0;}
+  .side-panel-head{padding:20px;border-bottom:1px solid rgba(255,0,51,.2);display:flex;align-items:center;justify-content:space-between;}
+  .side-panel-head h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;letter-spacing:.12em;color:#ffd0d8;text-transform:uppercase;}
+  .side-close{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,0,51,.3);
+    background:rgba(255,0,51,.08);color:#ff4d6d;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .side-item{padding:14px 20px;border-bottom:1px solid rgba(255,0,51,.1);
+    display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .side-item:active{background:rgba(255,0,51,.08);}
+  .side-item .material-symbols-outlined{font-size:20px;color:#ff0033;}
+  .side-item .si-title{font-family:'Space Grotesk',sans-serif;font-size:.82rem;font-weight:700;color:#f0e6e8;text-transform:uppercase;}
+  .side-item .si-sub{font-size:.68rem;color:#7d5c61;margin-top:2px;}
+  .side-badge{font-size:.58rem;padding:3px 8px;border-radius:6px;font-weight:700;
+    background:rgba(255,0,51,.15);color:#ff8aa3;border:1px solid rgba(255,0,51,.3);}
+
+  .site-footer{margin-top:30px;padding:24px 16px 32px;
+    border-top:1px solid rgba(255,0,51,.2);background:linear-gradient(180deg,transparent,rgba(255,0,51,.04));}
+  .footer-inner{max-width:540px;margin:0 auto;}
+  .footer-links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
+  .social-box{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,0,51,.08);border:1px solid rgba(255,0,51,.3);cursor:pointer;transition:transform .15s;}
+  .social-box:active{transform:scale(.92);background:rgba(255,0,51,.2);}
+  .social-box svg{width:20px;height:20px;fill:#ff4d6d;}
+  .footer-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,0,51,.4),transparent);margin:16px 0;}
+  .footer-dev{text-align:center;font-size:.78rem;color:#c9a3a8;line-height:1.7;}
+  .footer-dev b{color:#ff4d6d;font-weight:700;letter-spacing:.1em;font-family:'Space Grotesk',sans-serif;}
+  .footer-copy{text-align:center;font-size:.66rem;color:#7d5c61;margin-top:8px;letter-spacing:.15em;text-transform:uppercase;}
+  .footer-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:center;}
+  .footer-action-btn{padding:10px 18px;border-radius:10px;border:1px solid rgba(255,0,51,.35);
+    background:rgba(255,0,51,.08);color:#ffd0d8;font-family:'Space Grotesk',sans-serif;
+    font-weight:700;font-size:.74rem;letter-spacing:.08em;cursor:pointer;text-transform:uppercase;}
+  .footer-action-btn.demo{border-color:rgba(255,190,77,.4);color:#ffbe4d;background:rgba(255,190,77,.08);}
+
+  #particle-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;opacity:.55;}
+
+  .ring-layer{position:absolute;border-radius:50%;border:1px dashed rgba(255,0,51,.35);
+    animation:spinCW linear infinite;pointer-events:none;}
+  .ring-layer.r1{width:190px;height:190px;border-top-color:#ff0033;animation-duration:12s;}
+  .ring-layer.r2{width:220px;height:220px;border-right-color:#ff4d6d;animation-duration:18s;animation-direction:reverse;}
+  .ring-layer .dot{position:absolute;top:-4px;left:50%;width:7px;height:7px;border-radius:50%;
+    background:#ff0033;box-shadow:0 0 10px #ff0033;transform:translateX(-50%);}
+
+  .glitch-text{
+    position:relative;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:1.6rem;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    color:#8c0019;
+    text-shadow:0 0 14px rgba(140,0,25,.9), 0 0 4px rgba(255,0,51,.4);
+    animation:glitchFlicker 3s infinite;
+    padding-left:.28em;
+    text-align:center;
+  }
+  .glitch-text::before,
+  .glitch-text::after{
+    content:attr(data-text);
+    position:absolute;left:0;top:0;
+    width:100%;height:100%;
+    overflow:hidden;
+    letter-spacing:.28em;
+    padding-left:.28em;
+    text-align:center;
+  }
+  .glitch-text::before{
+    color:#ff0033;
+    animation:glitchTop 2.4s infinite linear alternate-reverse;
+    clip-path:polygon(0 0,100% 0,100% 45%,0 45%);
+    text-shadow:2px 0 #5a0010;
+    opacity:.85;
+  }
+  .glitch-text::after{
+    color:#5a0010;
+    animation:glitchBottom 1.8s infinite linear alternate-reverse;
+    clip-path:polygon(0 55%,100% 55%,100% 100%,0 100%);
+    text-shadow:-2px 0 #8c0019;
+    opacity:.85;
+  }
+  @keyframes glitchFlicker{
+    0%,95%,100%{opacity:1;}
+    96%{opacity:.75;}
+    97%{opacity:1;}
+    98%{opacity:.6;}
+    99%{opacity:1;}
+  }
+  @keyframes glitchTop{
+    0%   { transform:translate(0,0); }
+    20%  { transform:translate(-2px,-1px); }
+    40%  { transform:translate(2px,1px); }
+    60%  { transform:translate(-1px,1px); }
+    80%  { transform:translate(1px,-1px); }
+    100% { transform:translate(0,0); }
+  }
+  @keyframes glitchBottom{
+    0%   { transform:translate(0,0); }
+    25%  { transform:translate(2px,1px); }
+    50%  { transform:translate(-2px,-1px); }
+    75%  { transform:translate(1px,1px); }
+    100% { transform:translate(0,0); }
+  }
+</style>
+</head>
+<body class="hud" data-state="idle">
+
+<div id="loading-screen">
+  <div class="ldr-wrap">
+    <div class="ldr-ring outer"></div>
+    <div class="ldr-ring inner"></div>
+    <img class="ldr-img" id="ldr-img" alt="loading"/>
+  </div>
+  <div class="ldr-title" id="ldr-title-text">ILLUSION X FETCHING</div>
+  <div class="ldr-sub">INITIALIZING</div>
+</div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+  <canvas id="shader-canvas" style="display:block;width:100%;height:100%"></canvas>
+</div>
+
+<header id="app-header" class="fixed top-0 w-full z-50 pt-safe" style="background-color:rgba(10,5,7,.95);backdrop-filter:blur(10px);">
+  <div class="relative max-w-md mx-auto border-b" style="border-color:rgba(61,42,45,0.5);">
+    <div class="absolute left-0 top-0 w-3 h-3 border-l border-t pointer-events-none" style="border-color:rgba(255,0,51,0.4);"></div>
+    <div class="absolute right-0 top-0 w-3 h-3 border-r border-t pointer-events-none" style="border-color:rgba(255,0,51,0.4);"></div>
+
+    <div class="h-[76px] flex items-center gap-3 px-5">
+      <div class="relative w-11 h-11 shrink-0 flex items-center justify-center">
+        <svg class="absolute inset-0 -rotate-90" viewBox="0 0 44 44">
+          <circle cx="22" cy="22" fill="none" r="19" stroke="#3d2a2d" stroke-width="2.5"></circle>
+          <circle cx="22" cy="22" fill="none" r="19" stroke="#ff0033" stroke-dasharray="117 120" stroke-linecap="round" stroke-width="2.5"></circle>
+        </svg>
+        <div class="w-7 h-7 flex items-center justify-center" style="background-color:#241518;clip-path:polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0% 50%);">
+          <span class="material-symbols-outlined text-[15px]" style="color:#ff0033;">visibility</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col justify-center min-w-0 gap-0.5 flex-1">
+        <span id="brand-title" class="text-[14px] font-semibold tracking-tight truncate" style="font-family:'Space Grotesk',sans-serif;letter-spacing:.08em;color:#f0e6e8;">ILLUSION X FETCHING</span>
+        <span class="flex items-center gap-1.5 text-[10px] truncate" style="color:#c9a3a8;">
+          <span class="relative flex w-1.5 h-1.5 shrink-0">
+            <span class="absolute inline-flex w-full h-full rounded-full opacity-60 animate-ping" style="background-color:#ff0033;"></span>
+            <span id="status-dot" class="relative inline-flex rounded-full w-1.5 h-1.5" style="background-color:#ff0033;"></span>
+          </span>
+          <span id="status-text">Ready</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-3 pl-3 shrink-0 border-l" style="border-left-color:rgba(61,42,45,0.4);">
+        <span class="text-[14px] font-semibold tabular" id="hud-clock" style="font-family:'Space Grotesk',sans-serif;color:#f0e6e8;">--:--</span>
+        <button id="settings-btn" class="settings-btn" aria-label="Settings">
+          <span class="material-symbols-outlined">settings</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main style="padding-top:76px;padding-bottom:20px;position:relative;z-index:10;">
+  <div class="flex flex-col w-full relative">
+    <div class="relative z-10 flex flex-col items-center px-4 pt-4 pb-4 w-full max-w-md mx-auto">
+
+      <div class="relative flex flex-col items-center mb-3 mt-1">
+        <div class="relative w-48 h-48 flex items-center justify-center">
+          <div class="ring-layer r1"><div class="dot"></div></div>
+          <div class="ring-layer r2"><div class="dot"></div></div>
+          <div class="absolute inset-4 rounded-full filter blur-3xl pointer-events-none animate-pulse" style="background:rgba(255,0,51,0.15);"></div>
+          <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 256 256">
+            <circle class="origin-center animate-[spin_40s_linear_infinite]" cx="128" cy="128" fill="none" opacity="0.35" r="122" stroke="#ff4d6d" stroke-dasharray="3 8" stroke-width="1"></circle>
+            <circle class="origin-center animate-[spin_24s_linear_infinite_reverse]" cx="128" cy="128" fill="none" opacity="0.45" r="116" stroke="#ff0033" stroke-dasharray="28 12 7 12" stroke-width="1.5"></circle>
+          </svg>
+          <button id="orb-core" class="relative z-10 w-16 h-16 rounded-full flex items-center justify-center active:scale-95 transition-transform overflow-hidden" style="background:radial-gradient(circle,#241518 0%,#0f0809 70%,#0a0507 100%);border:1px solid rgba(255,0,51,0.3);box-shadow:0 0 35px rgba(255,0,51,0.4);">
+            <img id="orb-core-img" alt="core" style="width:38px;height:38px;border-radius:50%;object-fit:cover;box-shadow:0 0 20px #ff0033;border:1px solid rgba(255,0,51,.6);transition:width .3s,height .3s;"/>
+            <span id="orb-core-fallback" class="material-symbols-outlined text-[18px]" style="color:#1a0005;display:none;">visibility</span>
+          </button>
+        </div>
+        <h1 class="glitch-text mt-4" data-text="ILLUSION X FETCHING">ILLUSION X FETCHING</h1>
+      </div>
+
+      <div id="setup-banner" class="setup-banner w-full" style="display:none;">
+        👋 <b>Welcome.</b> Settings (⚙) kholo aur apni API keys daalo. Session: <span id="sid-banner" style="font-family:monospace;color:#ff4d6d;"></span>
+      </div>
+
+      <div id="box-number" class="feature-box">
+        <div class="fb-title"><span class="material-symbols-outlined">dialpad</span>Number API</div>
+        <div class="fb-body">
+          <input id="number-input" class="num-input" type="tel" placeholder="+91 9876543210" autocomplete="off"/>
+          <button id="fetch-btn" class="btn-primary mt-3">
+            <span class="material-symbols-outlined align-middle text-[18px] mr-1">search</span>LOOKUP & SAVE
+          </button>
+        </div>
+        <div class="fb-lock-badge" id="lockmsg-number" style="display:none;">🔒 Unlock to use</div>
+      </div>
+
+      <div id="box-fb" class="feature-box fbapi">
+        <div class="fb-title"><span class="material-symbols-outlined">local_fire_department</span>Firebase API</div>
+        <div class="fb-body">
+          <button id="fb-refresh-btn" class="btn-primary" style="background:linear-gradient(90deg,#ff4d6d,#ff0066);">
+            <span class="material-symbols-outlined align-middle text-[18px] mr-1">refresh</span>REFRESH FIREBASE
+          </button>
+        </div>
+        <div class="fb-lock-badge" id="lockmsg-fb" style="display:none;">🔒 Unlock to use</div>
+      </div>
+
+      <div id="box-db" class="feature-box">
+        <div class="fb-title"><span class="material-symbols-outlined">storage</span>Database API</div>
+        <div class="fb-body">
+          <button id="db-refresh-btn" class="btn-primary">
+            <span class="material-symbols-outlined align-middle text-[18px] mr-1">refresh</span>REFRESH DATABASE
+          </button>
+        </div>
+        <div class="fb-lock-badge" id="lockmsg-db" style="display:none;">🔒 Unlock to use</div>
+      </div>
+
+      <div id="box-telegram" class="feature-box tg">
+        <div class="fb-title"><span class="material-symbols-outlined">send</span>Telegram Bot</div>
+        <div class="fb-body">
+          <input id="tg-chat-input" class="num-input" type="text" placeholder="-1001234567890" autocomplete="off"/>
+          <div class="flex gap-2 mt-2">
+            <button id="tg-fetch-btn" class="btn-primary btn-tg" style="flex:1;">
+              <span class="material-symbols-outlined align-middle text-[18px] mr-1">info</span>CHAT INFO
+            </button>
+            <button id="tg-msg-fetch-btn" class="btn-primary btn-tg-msg" style="flex:1;">
+              <span class="material-symbols-outlined align-middle text-[18px] mr-1">inbox</span>MESSAGES
+            </button>
+          </div>
+          <input id="tg-msg-limit" class="num-input mt-2" type="number" placeholder="Messages limit (default 10)" min="1" max="50"/>
+        </div>
+        <div class="fb-lock-badge" id="lockmsg-tg" style="display:none;">🔒 Unlock to use</div>
+      </div>
+
+      <div id="result-box" class="w-full mb-2"></div>
+
+      <div id="records-header" class="w-full flex items-center justify-between px-1 mb-2">
+        <span class="text-[11px] font-medium tracking-wider uppercase" style="color:#c9a3a8;">Saved Records</span>
+        <span id="entries-count" class="text-[10px]" style="color:#7d5c61;">0</span>
+      </div>
+      <div id="entries-list" class="w-full"></div>
+      <div id="empty-state" class="w-full text-center py-6 text-[12px]" style="color:#7d5c61;">
+        No records yet.
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-actions">
+        <button class="footer-action-btn demo" id="demo-btn" onclick="enterDemo()">DEMO (1x)</button>
+        <button class="footer-action-btn" onclick="openSidePanel()">SIDE ACCESS</button>
+      </div>
+      <div class="footer-links" id="footer-socials"></div>
+      <div class="footer-divider"></div>
+      <div class="footer-dev">
+        Developed by <b id="footer-devname">Mr.Nilesh</b><br/>
+        <span id="footer-copy" style="font-size:.72rem;">© 2025 ILLUSION X FETCHING</span>
+      </div>
+      <div class="footer-copy" id="footer-powered">POWERED BY ILLUSION</div>
+    </div>
+  </footer>
+</main>
+
+<div class="side-panel" id="side-panel">
+  <div class="side-panel-head">
+    <h3>Side Access</h3>
+    <button class="side-close" onclick="closeSidePanel()"><span class="material-symbols-outlined" style="font-size:18px;">close</span></button>
+  </div>
+  <div id="side-unlock-view" style="padding:24px 20px;display:flex;flex-direction:column;gap:14px;">
+    <div class="modal-icon"><span class="material-symbols-outlined">lock</span></div>
+    <div style="font-family:'Space Grotesk';font-size:.9rem;letter-spacing:.1em;color:#ffd0d8;text-align:center;text-transform:uppercase;">Unlock Access</div>
+    <div style="font-size:.74rem;color:#c9a3a8;text-align:center;line-height:1.5;">Access key fill karo.</div>
+    <input id="side-key-input" class="modal-input" type="password" placeholder="••••••••" autocomplete="off"/>
+    <div class="modal-err" id="side-key-err"></div>
+    <div class="modal-attempts" id="side-attempts">Attempts left: 3 / 3</div>
+    <div class="modal-countdown" id="side-countdown" style="display:none;"></div>
+    <button class="modal-btn primary" id="side-unlock-btn" onclick="submitSideKey()">UNLOCK 🔓</button>
+    <div class="modal-forgot" onclick="sideForgot()">Forgot Access Key?</div>
+  </div>
+  <div id="side-items-view" style="display:none;"></div>
+</div>
+
+<div class="modal-backdrop" id="unlock-modal">
+  <div class="modal-card">
+    <div class="modal-icon"><span class="material-symbols-outlined">lock</span></div>
+    <div class="modal-title">Access Required</div>
+    <div class="modal-sub">Please unlock 🔓 to use this feature.</div>
+    <input class="modal-input" id="unlock-input" type="password" placeholder="••••••••" autocomplete="off"/>
+    <div class="modal-err" id="unlock-err"></div>
+    <div class="modal-countdown" id="unlock-countdown" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" onclick="closeUnlock()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitUnlock()">Unlock 🔓</button>
+    </div>
+    <div class="modal-forgot" onclick="forgotKey()">Forgot Access Key?</div>
+    <div class="modal-attempts" id="unlock-attempts">Attempts left: 3 / 3</div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="forgot-modal">
+  <div class="modal-card">
+    <div class="modal-icon"><span class="material-symbols-outlined">help</span></div>
+    <div class="modal-title">Contact Owner</div>
+    <div class="modal-sub">Access key bhool gaye? Owner se contact karo:</div>
+    <div style="text-align:center;margin-bottom:16px;">
+      <a id="forgot-channel-link" href="https://t.me/YourChannel" target="_blank" rel="noopener" style="color:#ff4d6d;font-weight:700;letter-spacing:.08em;text-decoration:underline;font-family:'Space Grotesk';">t.me/YourChannel</a>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn primary" onclick="closeForgot()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SESSION_ID = IF.getSession();
+const UNLOCK_KEY = 'if_unlocked_' + SESSION_ID;
+const DEMO_KEY = 'if_demo_' + SESSION_ID;
+const ATTEMPT_KEY = 'if_attempts_' + SESSION_ID;
+const LOCK_KEY = 'if_lock_' + SESSION_ID;
+const MAX_ATTEMPTS = 3;
+const LOCK_MS = 60000;
+
+(function(){
+  const cfg = IF.getFbConfig();
+  if(cfg && cfg.apiKey && cfg.projectId){
+    if(IF.initFirebase()) console.log('[IF] Firebase ready');
+  }
+})();
+
+IF.recordVisit();
+
+/* ---------- BRANDING + MEDIA ---------- */
+function applyBrandingFromState(state){
+  if(!state || !state.branding) return;
+  const b = state.branding;
+
+  document.title = b.title || 'ILLUSION X FETCHING';
+  const bt = document.getElementById('brand-title'); if(bt) bt.textContent = b.title || 'ILLUSION X FETCHING';
+  const lt = document.getElementById('ldr-title-text'); if(lt) lt.textContent = b.title || 'ILLUSION X FETCHING';
+  const de = document.getElementById('dynamic-description'); if(de) de.setAttribute('content', b.description || '');
+
+  // Loading logo + size
+  const ldrImg = document.getElementById('ldr-img');
+  if(ldrImg){
+    ldrImg.src = b.loadingLogo || b.logo || '';
+    const sz = parseInt(b.loadingSize) || 90;
+    ldrImg.style.width = sz + 'px';
+    ldrImg.style.height = sz + 'px';
+  }
+
+  // Orb core image + size
+  const orbImg = document.getElementById('orb-core-img');
+  const orbFallback = document.getElementById('orb-core-fallback');
+  if(orbImg){
+    const coreSrc = b.coreImage || b.logo;
+    if(coreSrc){
+      orbImg.src = coreSrc;
+      orbImg.style.display = 'block';
+      if(orbFallback) orbFallback.style.display = 'none';
+      const csz = parseInt(b.coreSize) || 38;
+      orbImg.style.width = csz + 'px';
+      orbImg.style.height = csz + 'px';
+    } else {
+      orbImg.style.display = 'none';
+      if(orbFallback) orbFallback.style.display = 'inline-block';
+    }
+  }
+
+  if(b.favicon){
+    const f = document.getElementById('dynamic-favicon'); if(f) f.href = b.favicon;
+  }
+
+  const fd = document.getElementById('footer-devname'); if(fd) fd.textContent = state.footer.developedBy || 'Mr.Nilesh';
+  const fc = document.getElementById('footer-copy'); if(fc) fc.textContent = state.footer.copyright || '';
+  const fp = document.getElementById('footer-powered'); if(fp) fp.textContent = state.footer.poweredBy || '';
+
+  const socialsEl = document.getElementById('footer-socials');
+  if(socialsEl){
+    const icons = {
+      telegram:'<path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>',
+      whatsapp:'<path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.4 1.3 4.9L2 22l5.3-1.4c1.4.8 3 1.2 4.7 1.2 5.5 0 10-4.5 10-10S17.5 2 12 2z"/>',
+      youtube:'<path d="M23 12s0-3.4-.4-5c-.2-.9-.9-1.5-1.7-1.7C19.3 5 12 5 12 5s-7.3 0-8.9.3c-.8.2-1.5.9-1.7 1.7C1 8.6 1 12 1 12s0 3.4.4 5c.2.9.9 1.5 1.7 1.7C4.7 19 12 19 12 19s7.3 0 8.9-.3c.8-.2 1.5-.9 1.7-1.7.4-1.6.4-5 .4-5z"/>',
+      instagram:'<path d="M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.2.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.2.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4 1.2-.1 1.6-.1 4.8-.1zM12 7a5 5 0 100 10 5 5 0 000-10z"/>'
+    };
+    socialsEl.innerHTML = '';
+    (state.socials || []).forEach(s => {
+      const a = document.createElement('a');
+      a.className = 'social-box';
+      a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.title = s.name;
+      a.innerHTML = `<svg viewBox="0 0 24 24">${icons[s.icon] || icons.telegram}</svg>`;
+      socialsEl.appendChild(a);
+    });
+  }
+}
+
+window.addEventListener('load',()=>setTimeout(()=>document.getElementById('loading-screen').classList.add('hide'),1400));
+
+/* ---------- SHADER ---------- */
+(function(){
+  const c=document.getElementById('shader-canvas');if(!c)return;
+  function sync(){const w=c.clientWidth||innerWidth,h=c.clientHeight||innerHeight;if(c.width!==w||c.height!==h){c.width=w;c.height=h;}}
+  new ResizeObserver(sync).observe(c);sync();
+  const gl=c.getContext('webgl');if(!gl)return;
+  const vs=`attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}`;
+  const fs=`precision highp float;uniform float u_time;uniform vec2 u_res;
+  void main(){vec2 uv=(gl_FragCoord.xy-0.5*u_res.xy)/min(u_res.x,u_res.y);
+  vec3 col=vec3(0.07,0.01,0.02);
+  vec2 g=fract(gl_FragCoord.xy/32.0);
+  col+=vec3(1.0,0.0,0.2)*(step(0.97,g.x)+step(0.97,g.y))*0.03;
+  float d=length(uv);
+  col+=vec3(1.0,0.0,0.2)*exp(-d*2.8)*(0.3+0.12*(0.5+0.5*sin(u_time*1.8)));
+  gl_FragColor=vec4(col,1.0);}`;
+  function cs(t,s){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh;}
+  const p=gl.createProgram();
+  gl.attachShader(p,cs(gl.VERTEX_SHADER,vs));
+  gl.attachShader(p,cs(gl.FRAGMENT_SHADER,fs));
+  gl.linkProgram(p);gl.useProgram(p);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const a=gl.getAttribLocation(p,'a');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+  const uT=gl.getUniformLocation(p,'u_time'),uR=gl.getUniformLocation(p,'u_res');
+  (function loop(t){gl.viewport(0,0,c.width,c.height);if(uT)gl.uniform1f(uT,t*0.001);if(uR)gl.uniform2f(uR,c.width,c.height);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);requestAnimationFrame(loop);})(0);
+})();
+
+/* ---------- PARTICLES ---------- */
+(function(){
+  const c=document.getElementById('particle-canvas');if(!c)return;
+  const ctx=c.getContext('2d');
+  let W,H,parts=[];
+  const CHARS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  function sync(){W=c.width=innerWidth;H=c.height=innerHeight;}
+  sync();window.addEventListener('resize',sync);
+  for(let i=0;i<110;i++){
+    parts.push({
+      x: Math.random()*W,
+      y: Math.random()*H,
+      vx: (Math.random()-0.5)*1.8,
+      vy: (Math.random()-0.5)*1.8,
+      ch: CHARS[Math.floor(Math.random()*CHARS.length)],
+      size: 16+Math.random()*14,
+      alpha: 0.05+Math.random()*0.15
+    });
+  }
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    parts.forEach(p=>{
+      p.x += p.vx;
+      p.y += p.vy;
+      if(p.x<0||p.x>W) p.vx *= -1;
+      if(p.y<0||p.y>H) p.vy *= -1;
+      if(Math.random()<0.02) p.ch = CHARS[Math.floor(Math.random()*CHARS.length)];
+      ctx.font = `700 ${p.size}px 'Space Grotesk', monospace`;
+      ctx.fillStyle = `rgba(90,0,16,${p.alpha})`;
+      ctx.fillText(p.ch, p.x, p.y);
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+/* ---------- User Firebase ---------- */
+let fbDb=null,fbReady=false;
+function initFirebase(){
+  const s=loadSettings();const cfg=s.firebaseConfig;
+  if(!cfg||!cfg.apiKey||!cfg.projectId){fbReady=false;return false;}
+  try{if(firebase.apps.length)firebase.app().delete().catch(()=>{});firebase.initializeApp(cfg);fbDb=firebase.firestore();fbReady=true;return true;}
+  catch(e){fbReady=false;return false;}
+}
+async function fbList(){if(!fbReady)throw new Error('Firebase not configured');const snap=await fbDb.collection('numbers').orderBy('createdAtMs','desc').limit(300).get();const o=[];snap.forEach(d=>o.push({_src:'fb',id:d.id,...d.data()}));return o;}
+async function fbCreate(p){const r=await fbDb.collection('numbers').add({...p,createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdAtMs:p.createdAtMs||Date.now()});return r.id;}
+async function fbUpdate(id,patch){await fbDb.collection('numbers').doc(id).update(patch);}
+async function fbDelete(id){await fbDb.collection('numbers').doc(id).delete();}
+
+function loadSettings(){try{const r=sessionStorage.getItem('if_settings_'+SESSION_ID);return r?JSON.parse(r):{};}catch{return {};}}
+
+/* ---------- UI ---------- */
+const statusText=document.getElementById('status-text');
+const clockEl=document.getElementById('hud-clock');
+const resultBox=document.getElementById('result-box');
+const entriesList=document.getElementById('entries-list');
+const entriesCount=document.getElementById('entries-count');
+const emptyState=document.getElementById('empty-state');
+const hud=document.body;
+
+function setStatus(t){statusText.classList.add('swap');setTimeout(()=>{statusText.textContent=t;statusText.classList.remove('swap');},200);}
+function setState(s){hud.dataset.state=s;}
+function tickClock(){clockEl.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+tickClock();setInterval(tickClock,15000);
+
+/* ---------- UNLOCK ---------- */
+function isUnlocked(){return sessionStorage.getItem(UNLOCK_KEY)==='yes';}
+function isDemoMode(){return sessionStorage.getItem(DEMO_KEY)==='yes';}
+function getAttempts(){return parseInt(sessionStorage.getItem(ATTEMPT_KEY)||'0');}
+function setAttempts(n){sessionStorage.setItem(ATTEMPT_KEY,String(n));}
+function getLockUntil(){return parseInt(sessionStorage.getItem(LOCK_KEY)||'0');}
+function setLockUntil(ts){sessionStorage.setItem(LOCK_KEY,String(ts));}
+
+function applyLockState(){
+  const unlocked=isUnlocked();
+  ['number','fb','db','tg'].forEach(f=>{
+    const box=document.getElementById('box-'+f);
+    const lockMsg=document.getElementById('lockmsg-'+f);
+    if(!box)return;
+    if(unlocked){box.classList.remove('locked');if(lockMsg)lockMsg.style.display='none';}
+    else{box.classList.add('locked');if(lockMsg)lockMsg.style.display='block';}
+  });
+  document.querySelectorAll('.entry-actions button').forEach(b=>{
+    if(unlocked){b.disabled=false;b.style.opacity='1';}
+    else{b.disabled=true;b.style.opacity='.4';}
+  });
+  if(unlocked)setStatus('Unlocked 🔓');
+  else if(isDemoMode())setStatus('Demo mode — read only');
+  else setStatus('Locked 🔒');
+  document.getElementById('demo-btn').style.display = IF.hasUsedDemo() ? 'none' : 'inline-block';
+}
+
+let unlockResolve=null;
+function requireUnlock(){
+  return new Promise(resolve=>{
+    if(isUnlocked()){resolve(true);return;}
+    if(isDemoMode()){resolve(false);return;}
+    const lockUntil=getLockUntil();
+    if(lockUntil>Date.now()){showUnlockModal(true,lockUntil-Date.now());unlockResolve=resolve;return;}
+    showUnlockModal(false,0);unlockResolve=resolve;
+  });
+}
+function showUnlockModal(locked,remaining){
+  const m=document.getElementById('unlock-modal');
+  const input=document.getElementById('unlock-input');
+  const err=document.getElementById('unlock-err');
+  const cd=document.getElementById('unlock-countdown');
+  const attemptsEl=document.getElementById('unlock-attempts');
+  m.classList.add('show');input.value='';err.textContent='';
+  const left=Math.max(0,MAX_ATTEMPTS-getAttempts());
+  attemptsEl.textContent=`Attempts left: ${left} / ${MAX_ATTEMPTS}`;
+  if(locked){input.disabled=true;cd.style.display='block';startCd(remaining,cd,()=>showUnlockModal(false,0));}
+  else{input.disabled=false;cd.style.display='none';setTimeout(()=>input.focus(),300);}
+}
+let cdInt=null;
+function startCd(ms,el,onDone){
+  clearInterval(cdInt);let r=ms;
+  function u(){const s=Math.ceil(r/1000);el.textContent=`Locked: ${s}s`;if(r<=0){clearInterval(cdInt);el.style.display='none';onDone&&onDone();return;}r-=1000;}
+  u();cdInt=setInterval(u,1000);
+}
+async function submitUnlock(){
+  const input=document.getElementById('unlock-input');
+  const err=document.getElementById('unlock-err');
+  const val=(input.value||'').trim();
+  if(!val){err.textContent='Enter access key';return;}
+  const res = await IF.consumeKey(val, SESSION_ID);
+  if(res.ok){
+    sessionStorage.setItem(UNLOCK_KEY,'yes');setAttempts(0);
+    err.style.color='#3be6a0';err.textContent='Access granted 🔓';
+    setTimeout(()=>{document.getElementById('unlock-modal').classList.remove('show');if(unlockResolve){unlockResolve(true);unlockResolve=null;}applyLockState();refreshSideView();},500);
+  } else {
+    const used=getAttempts()+1;setAttempts(used);
+    const left=MAX_ATTEMPTS-used;
+    if(left<=0){setLockUntil(Date.now()+LOCK_MS);setAttempts(0);err.textContent='Wrong key. Locked 1 min.';showUnlockModal(true,LOCK_MS);}
+    else{err.textContent=`Wrong key. ${left} left.`;document.getElementById('unlock-attempts').textContent=`Attempts left: ${left} / ${MAX_ATTEMPTS}`;}
+    input.value='';
+  }
+}
+function closeUnlock(){document.getElementById('unlock-modal').classList.remove('show');if(unlockResolve){unlockResolve(false);unlockResolve=null;}}
+function forgotKey(){document.getElementById('forgot-modal').classList.add('show');}
+function closeForgot(){document.getElementById('forgot-modal').classList.remove('show');}
+
+/* ---------- SIDE ---------- */
+function openSidePanel(){document.getElementById('side-panel').classList.add('open');refreshSideView();}
+function closeSidePanel(){document.getElementById('side-panel').classList.remove('open');}
+let sideCdInt=null;
+function refreshSideView(){
+  const unlocked=isUnlocked();
+  const uv=document.getElementById('side-unlock-view');
+  const iv=document.getElementById('side-items-view');
+  if(unlocked){uv.style.display='none';iv.style.display='block';renderSideItems();return;}
+  uv.style.display='flex';iv.style.display='none';
+  const left=Math.max(0,MAX_ATTEMPTS-getAttempts());
+  document.getElementById('side-attempts').textContent=`Attempts left: ${left} / ${MAX_ATTEMPTS}`;
+  const lockUntil=getLockUntil();const now=Date.now();
+  const cd=document.getElementById('side-countdown');const input=document.getElementById('side-key-input');
+  clearInterval(sideCdInt);
+  if(lockUntil>now){input.disabled=true;cd.style.display='block';let r=lockUntil-now;
+    function u(){const s=Math.ceil(r/1000);cd.textContent=`Locked: ${s}s`;if(r<=0){clearInterval(sideCdInt);cd.style.display='none';input.disabled=false;refreshSideView();return;}r-=1000;}
+    u();sideCdInt=setInterval(u,1000);
+  }else{input.disabled=false;cd.style.display='none';}
+}
+async function submitSideKey(){
+  const input=document.getElementById('side-key-input');
+  const err=document.getElementById('side-key-err');
+  const val=(input.value||'').trim();err.textContent='';err.style.color='#ff3355';
+  if(!val){err.textContent='Enter access key';return;}
+  const res=await IF.consumeKey(val,SESSION_ID);
+  if(res.ok){
+    sessionStorage.setItem(UNLOCK_KEY,'yes');setAttempts(0);
+    err.style.color='#3be6a0';err.textContent='Access granted 🔓';
+    setTimeout(()=>{applyLockState();refreshSideView();closeSidePanel();},600);
+  } else {
+    const used=getAttempts()+1;setAttempts(used);
+    const left=MAX_ATTEMPTS-used;
+    if(left<=0){setLockUntil(Date.now()+LOCK_MS);setAttempts(0);err.textContent='Wrong. Locked 1 min.';refreshSideView();}
+    else{err.textContent=`Wrong. ${left} left.`;document.getElementById('side-attempts').textContent=`Attempts left: ${left} / ${MAX_ATTEMPTS}`;}
+    input.value='';
+  }
+}
+function sideForgot(){document.getElementById('forgot-modal').classList.add('show');}
+function renderSideItems(){
+  const s=loadSettings();const demo=isDemoMode();
+  const container=document.getElementById('side-items-view');
+  const items=[
+    {id:'settings',icon:'settings',title:'Settings',sub:'API keys'},
+    {id:'number',icon:'dialpad',title:'Number API',sub:s.numberApiKey?'Configured':'Not set'},
+    {id:'db',icon:'storage',title:'Database API',sub:s.dbApiUrl?'Configured':'Not set'},
+    {id:'fb',icon:'local_fire_department',title:'Firebase',sub:s.firebaseConfig?'Configured':'Not set'},
+    {id:'tg',icon:'send',title:'Telegram Bot',sub:s.telegramToken?'Configured':'Not set'},
+    {id:'admin',icon:'admin_panel_settings',title:'Admin Panel',sub:'Manage everything'},
+  ];
+  container.innerHTML='';
+  items.forEach(it=>{
+    const el=document.createElement('div');el.className='side-item';
+    el.innerHTML=`<span class="material-symbols-outlined">${it.icon}</span>
+      <div style="flex:1"><div class="si-title">${it.title}</div><div class="si-sub">${it.sub}</div></div>
+      ${demo?'<span class="side-badge">DEMO</span>':''}`;
+    el.addEventListener('click',()=>handleSideClick(it.id));
+    container.appendChild(el);
+  });
+  if(demo){
+    const el=document.createElement('div');el.className='side-item';el.style.borderTop='1px solid rgba(255,190,77,.3)';
+    el.innerHTML=`<span class="material-symbols-outlined" style="color:#ffbe4d;">logout</span>
+      <div style="flex:1"><div class="si-title" style="color:#ffbe4d;">Exit Demo</div><div class="si-sub">Return to lock</div></div>`;
+    el.addEventListener('click',exitDemo);container.appendChild(el);
+  }
+}
+function handleSideClick(id){
+  if(id==='settings'){location.href='settings.html';return;}
+  if(id==='admin'){location.href='admin.html';return;}
+  closeSidePanel();
+  const map={number:'box-number',db:'box-db',fb:'box-fb',tg:'box-telegram'};
+  const t=document.getElementById(map[id]);if(t)t.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+/* ---------- DEMO ---------- */
+async function enterDemo(){
+  if(IF.hasUsedDemo()){setStatus('Demo already used');showUnlockModal(false,0);return;}
+  const r=await IF.consumeDemo();
+  if(!r.ok){setStatus('Demo not available');return;}
+  sessionStorage.setItem(DEMO_KEY,'yes');
+  applyLockState();refreshSideView();
+}
+function exitDemo(){sessionStorage.removeItem(DEMO_KEY);applyLockState();refreshSideView();showUnlockModal(false,0);}
+
+/* ---------- APIs ---------- */
+async function lookupNumber(num){
+  const s=loadSettings();if(!s.numberApiKey)throw new Error('Number API key missing.');
+  const base=s.numberApiUrl||'https://api.numlookupapi.com/v1/validate';
+  const r=await fetch(`${base.replace(/\/$/,'')}/${encodeURIComponent(num)}?apikey=${encodeURIComponent(s.numberApiKey)}`);
+  if(!r.ok)throw new Error('Number API '+r.status);return await r.json();
+}
+async function tgCall(method,params={}){
+  const s=loadSettings();if(!s.telegramToken)throw new Error('Telegram token missing.');
+  const r=await fetch(`https://api.telegram.org/bot${s.telegramToken}/${method}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+  const j=await r.json();if(!j.ok)throw new Error(j.description);return j.result;
+}
+async function fetchTgChat(chatId){
+  const [chat,count,admins]=await Promise.all([tgCall('getChat',{chat_id:chatId}),tgCall('getChatMemberCount',{chat_id:chatId}).catch(()=>null),tgCall('getChatAdministrators',{chat_id:chatId}).catch(()=>[])]);
+  return {chat_title:chat.title||chat.username||'chat',chat_type:chat.type,chat_id:chat.id,username:chat.username||null,description:chat.description||null,members_count:count,admins_count:admins.length,admins:admins.slice(0,10).map(a=>({id:a.user.id,name:[a.user.first_name,a.user.last_name].filter(Boolean).join(' '),username:a.user.username||null,status:a.status}))};
+}
+async function fetchTgMsgs(chatId,limit){
+  const ups=await tgCall('getUpdates',{limit:100,timeout:0});const out=[];
+  for(const u of ups){const m=u.message||u.channel_post;if(!m)continue;if(String(m.chat.id)!==String(chatId))continue;out.push({message_id:m.message_id,from_name:m.from?[m.from.first_name,m.from.last_name].filter(Boolean).join(' '):null,date:m.date?new Date(m.date*1000).toISOString():null,text:m.text||m.caption||'(no text)'});if(out.length>=(limit||10))break;}
+  return {chat_id:chatId,fetched:out.length,messages:out};
+}
+function dbHeaders(){
+  const s=loadSettings();const h={'Content-Type':'application/json','X-Session-Id':SESSION_ID};
+  if(s.dbApiKey){if(s.dbAuthMode==='x-api-key')h['X-API-Key']=s.dbApiKey;else if(s.dbAuthMode==='none'){}else h['Authorization']='Bearer '+s.dbApiKey;}
+  return h;
+}
+function dbUrl(p){const s=loadSettings();if(!s.dbApiUrl)throw new Error('DB URL missing.');return s.dbApiUrl.replace(/\/$/,'')+p;}
+async function dbList(){const r=await fetch(dbUrl('/records'),{headers:dbHeaders()});if(!r.ok)throw new Error('DB '+r.status);const j=await r.json();const a=Array.isArray(j)?j:(j.records||j.data||[]);return a.map(x=>({_src:'db',...x}));}
+async function dbCreate(p){const r=await fetch(dbUrl('/records'),{method:'POST',headers:dbHeaders(),body:JSON.stringify(p)});if(!r.ok)throw new Error('DB create '+r.status);return await r.json().catch(()=>({}));}
+async function dbUpdate(id,patch){const r=await fetch(dbUrl('/records/'+encodeURIComponent(id)),{method:'PUT',headers:dbHeaders(),body:JSON.stringify(patch)});if(!r.ok)throw new Error('DB update '+r.status);}
+async function dbDelete(id){const r=await fetch(dbUrl('/records/'+encodeURIComponent(id)),{method:'DELETE',headers:dbHeaders()});if(!r.ok)throw new Error('DB delete '+r.status);}
+
+/* ---------- RENDER ---------- */
+function renderResult(data,title){
+  resultBox.innerHTML='';
+  const card=document.createElement('div');card.className='result-card';
+  const rows=[['Title',title]];const skip=['admins','messages'];
+  Object.entries(data).forEach(([k,v])=>{if(skip.includes(k))return;if(v==null||v==='')return;rows.push([k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),String(v)]);});
+  card.innerHTML=rows.map(r=>`<div class="row"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join('');
+  resultBox.appendChild(card);
+}
+async function saveEverywhere(p){
+  const s=loadSettings();const res=[];
+  if(s.dbApiUrl)res.push(dbCreate(p).then(()=>'DB ✓').catch(e=>'DB ✗ '+e.message));
+  if(s.firebaseConfig&&s.firebaseConfig.apiKey&&fbReady)res.push(fbCreate(p).then(()=>'FB ✓').catch(e=>'FB ✗ '+e.message));
+  if(!res.length)return ['no storage'];return await Promise.all(res);
+}
+async function loadAllEntries(){
+  const s=loadSettings();const tasks=[];
+  if(s.dbApiUrl)tasks.push(dbList().catch(()=>[]));
+  if(s.firebaseConfig&&s.firebaseConfig.apiKey&&s.firebaseConfig.projectId&&fbReady)tasks.push(fbList().catch(()=>[]));
+  if(!tasks.length){entriesList.innerHTML='';entriesCount.textContent='0';emptyState.style.display='block';emptyState.textContent='No storage configured.';return;}
+  const all=(await Promise.all(tasks)).flat().sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0));
+  entriesList.innerHTML='';entriesCount.textContent=String(all.length);
+  all.forEach(e=>entriesList.appendChild(makeEntryCard(e)));
+  emptyState.style.display=all.length===0?'block':'none';
+  applyLockState();
+}
+function makeEntryCard(e){
+  const id=e.id||e._id||e.key||e.uid;const src=e._src||'db';
+  const num=e.number||e.phone||'(record)';
+  const meta=(e.data&&(e.data.chat_title||e.data.carrier))||e.carrier||'Unknown';
+  const dt=e.createdAtMs?new Date(e.createdAtMs).toLocaleString():'—';
+  const kind=e.kind||(String(num).startsWith('TG:')?'telegram':'number');
+  const card=document.createElement('div');card.className='entry-card';
+  card.innerHTML=`
+    <span class="src ${src}">${src==='fb'?'FIREBASE':'DB'}</span>
+    <span class="kind">${kind.toUpperCase()}</span>
+    <div class="num">${num}</div>
+    <div class="meta">${meta} · ${dt}</div>
+    <div class="entry-actions">
+      <button data-act="view">VIEW</button>
+      <button data-act="edit">EDIT</button>
+      <button data-act="dl">DOWNLOAD</button>
+      <button data-act="del" class="del">DELETE</button>
+    </div>`;
+  card.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>handleAction(b.dataset.act,id,e,src)));
+  return card;
+}
+async function handleAction(act,id,e,src){
+  if(!isUnlocked()){const ok=await requireUnlock();if(!ok)return;}
+  if(act==='view'){renderResult(e.data||e,e.number||e.phone||'Record');window.scrollTo({top:0,behavior:'smooth'});return;}
+  if(act==='edit'){
+    const n=prompt('Edit value:',e.number||e.phone||'');if(n===null)return;
+    try{if(src==='fb')await fbUpdate(id,{number:n.trim()});else await dbUpdate(id,{number:n.trim()});setStatus('Updated');loadAllEntries();}catch(err){alert(err.message);}
+  } else if(act==='del'){
+    if(!confirm('Delete?'))return;
+    try{if(src==='fb')await fbDelete(id);else await dbDelete(id);setStatus('Deleted');loadAllEntries();}catch(err){alert(err.message);}
+  } else if(act==='dl'){
+    const blob=new Blob([JSON.stringify(e,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`${src}_${(e.number||'x').toString().replace(/[^0-9A-Za-z]/g,'')}_${Date.now()}.json`;
+    a.click();URL.revokeObjectURL(a.href);setStatus('Downloaded');
+  }
+}
+
+/* ---------- ACTIONS ---------- */
+async function guarded(fn){
+  if(isDemoMode()){setStatus('Demo — read only');showUnlockModal(false,0);return;}
+  if(!isUnlocked()){const ok=await requireUnlock();if(!ok)return;}
+  return fn();
+}
+async function doNumberLookup(){return guarded(async()=>{
+  const num=(document.getElementById('number-input').value||'').trim();
+  if(!num){setStatus('Enter number');return;}
+  setStatus('Looking up…');setState('thinking');
+  try{const data=await lookupNumber(num);renderResult(data,num);
+    const saved=await saveEverywhere({number:num,data,kind:'number',createdAtMs:Date.now()});
+    setStatus(saved.join(' · '));setState('idle');await loadAllEntries();
+  }catch(e){setState('idle');setStatus('Error: '+e.message);}
+});}
+async function doTgChat(){return guarded(async()=>{
+  const s=loadSettings();const chatId=(document.getElementById('tg-chat-input').value||s.telegramChatId||'').trim();
+  if(!chatId){setStatus('Chat ID do');return;}
+  setStatus('Fetching…');setState('thinking');
+  try{const data=await fetchTgChat(chatId);renderResult(data,'TG: '+data.chat_title);
+    const saved=await saveEverywhere({number:'TG:'+chatId,kind:'telegram',data,createdAtMs:Date.now()});
+    setStatus(saved.join(' · '));setState('idle');await loadAllEntries();
+  }catch(e){setState('idle');setStatus('Error: '+e.message);}
+});}
+async function doTgMsgs(){return guarded(async()=>{
+  const s=loadSettings();const chatId=(document.getElementById('tg-chat-input').value||s.telegramChatId||'').trim();
+  const limit=parseInt(document.getElementById('tg-msg-limit').value)||10;
+  if(!chatId){setStatus('Chat ID do');return;}
+  setStatus('Fetching…');setState('thinking');
+  try{const data=await fetchTgMsgs(chatId,limit);renderResult(data,'Msgs: '+chatId);
+    const saved=await saveEverywhere({number:'TGMSG:'+chatId+':'+Date.now(),kind:'telegram-messages',data,createdAtMs:Date.now()});
+    setStatus(saved.join(' · '));setState('idle');await loadAllEntries();
+  }catch(e){setState('idle');setStatus('Error: '+e.message);}
+});}
+async function dbRefresh(){return guarded(async()=>{setStatus('Refreshing…');await loadAllEntries();setStatus('DB refreshed');});}
+async function fbRefresh(){return guarded(async()=>{setStatus('Refreshing…');await loadAllEntries();setStatus('Firebase refreshed');});}
+
+document.getElementById('fetch-btn').addEventListener('click',doNumberLookup);
+document.getElementById('number-input').addEventListener('keydown',e=>{if(e.key==='Enter')doNumberLookup();});
+document.getElementById('tg-fetch-btn').addEventListener('click',doTgChat);
+document.getElementById('tg-msg-fetch-btn').addEventListener('click',doTgMsgs);
+document.getElementById('db-refresh-btn').addEventListener('click',dbRefresh);
+document.getElementById('fb-refresh-btn').addEventListener('click',fbRefresh);
+document.getElementById('settings-btn').addEventListener('click',()=>{location.href='settings.html';});
+document.getElementById('unlock-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitUnlock();});
+document.getElementById('side-key-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitSideKey();});
+
+/* ---------- BOOT ---------- */
+async function boot(){
+  const state = await IF.loadState();
+  applyBrandingFromState(state);
+  IF.subscribeState((newState)=>{ applyBrandingFromState(newState); });
+  const s=loadSettings();
+  document.getElementById('sid-banner').textContent=SESSION_ID.slice(0,10);
+  const hasFb=!!(s.firebaseConfig&&s.firebaseConfig.apiKey);
+  if(hasFb)initFirebase();
+  await loadAllEntries();
+  applyLockState();
+  refreshSideView();
+}
+window.addEventListener('focus',boot);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)boot();});
+boot();
+
+window.enterDemo=enterDemo;
+window.openSidePanel=openSidePanel;
+window.closeSidePanel=closeSidePanel;
+window.submitUnlock=submitUnlock;
+window.submitSideKey=submitSideKey;
+window.closeUnlock=closeUnlock;
+window.forgotKey=forgotKey;
+window.sideForgot=sideForgot;
+window.closeForgot=closeForgot;
+</script>
+</body>
+</html>

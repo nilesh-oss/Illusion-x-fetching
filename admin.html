@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Admin — ILLUSION X FETCHING</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="shared.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:#0a0507;color:#f0e6e8;font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px));
+    -webkit-font-smoothing:antialiased;}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;line-height:1;}
+  .container{max-width:640px;margin:0 auto;}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .back{width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(255,0,51,.4);border-radius:10px;background:rgba(20,10,12,.6);color:#ff4d6d;cursor:pointer;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:1.2rem;letter-spacing:.14em;color:#ffd0d8;flex:1;
+    text-transform:uppercase;text-shadow:0 0 14px rgba(255,0,51,.4);}
+
+  .card{background:linear-gradient(180deg,rgba(30,15,18,.8),rgba(12,6,8,.8));
+    border:1px solid rgba(255,0,51,.25);border-left:3px solid #ff0033;
+    border-radius:10px 14px 14px 10px;padding:16px;margin-bottom:16px;transition:box-shadow .25s;}
+  .card.editing{box-shadow:0 0 30px rgba(255,0,51,.35);border-left-color:#ff4d6d;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .card h2{font-family:'Space Grotesk',sans-serif;font-size:.86rem;letter-spacing:.1em;
+    color:#ffd0d8;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+  .card h2 .material-symbols-outlined{font-size:18px;color:#ff4d6d;}
+  .card-lock{font-size:.62rem;color:#7d5c61;letter-spacing:.1em;font-weight:700;text-transform:uppercase;
+    display:flex;align-items:center;gap:4px;}
+  .card-lock .material-symbols-outlined{font-size:13px;}
+  .edit-toggle{padding:6px 12px;border-radius:8px;border:1px solid rgba(255,0,51,.4);
+    background:rgba(255,0,51,.1);color:#ffd0d8;font-family:'Space Grotesk',sans-serif;
+    font-weight:700;font-size:.68rem;letter-spacing:.08em;cursor:pointer;
+    display:flex;align-items:center;gap:5px;}
+  .edit-toggle .material-symbols-outlined{font-size:14px;color:#ff4d6d;}
+  .edit-toggle.active{background:linear-gradient(90deg,#ff0033,#ff4d6d);color:#1a0005;border-color:transparent;}
+  .edit-toggle.active .material-symbols-outlined{color:#1a0005;}
+
+  label{display:block;font-size:.7rem;letter-spacing:.12em;color:#7d5c61;
+    text-transform:uppercase;font-weight:600;margin-bottom:6px;margin-top:10px;}
+  input,textarea,select{width:100%;background:rgba(10,5,7,.85);border:1px solid rgba(255,0,51,.35);
+    color:#f0e6e8;font-size:.92rem;padding:11px 13px;border-radius:10px;outline:none;
+    font-family:inherit;user-select:text;-webkit-user-select:text;
+    transition:opacity .2s,border-color .15s;}
+  textarea{font-family:monospace;font-size:.78rem;min-height:100px;resize:vertical;line-height:1.5;}
+  input:focus,textarea:focus,select:focus{border-color:#ff0033;box-shadow:0 0 0 3px rgba(255,0,51,.15);}
+  input:disabled,textarea:disabled,select:disabled{opacity:.55;cursor:not-allowed;
+    border-color:rgba(255,0,51,.15);background:rgba(10,5,7,.5);}
+
+  .btn{padding:11px 16px;border-radius:10px;border:none;font-family:'Space Grotesk',sans-serif;
+    font-weight:700;font-size:.76rem;letter-spacing:.08em;cursor:pointer;
+    text-transform:uppercase;transition:transform .15s;}
+  .btn:active{transform:scale(.95);}
+  .btn-primary{background:linear-gradient(90deg,#ff0033,#ff4d6d);color:#1a0005;
+    box-shadow:0 0 16px rgba(255,0,51,.4);}
+  .btn-ghost{background:rgba(255,0,51,.08);color:#ffd0d8;border:1px solid rgba(255,0,51,.35);}
+  .btn-danger{background:rgba(255,51,85,.12);color:#ff3355;border:1px solid rgba(255,51,85,.4);}
+  .btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .btn-row .btn{flex:1;min-width:120px;}
+
+  .edit-bar{display:none;gap:8px;margin-top:12px;}
+  .edit-bar.show{display:flex;}
+  .edit-bar .btn{flex:1;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;}
+  .stat{background:rgba(255,0,51,.06);border:1px solid rgba(255,0,51,.2);border-radius:10px;padding:12px;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;color:#ff4d6d;
+    text-shadow:0 0 14px rgba(255,0,51,.5);}
+  .stat .lbl{font-size:.65rem;letter-spacing:.12em;color:#7d5c61;text-transform:uppercase;margin-top:2px;}
+
+  .list-item{background:rgba(36,21,24,.6);border:1px solid rgba(255,0,51,.2);
+    border-radius:10px;padding:10px 12px;margin-bottom:8px;
+    display:flex;align-items:center;gap:10px;}
+  .list-item .li-main{flex:1;min-width:0;}
+  .list-item .li-title{font-family:'Space Grotesk',sans-serif;font-size:.82rem;
+    font-weight:700;color:#ff4d6d;letter-spacing:.04em;word-break:break-all;}
+  .list-item .li-sub{font-size:.68rem;color:#7d5c61;margin-top:2px;word-break:break-word;}
+  .list-item .li-actions{display:flex;gap:4px;flex-shrink:0;}
+  .li-btn{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,0,51,.3);
+    background:rgba(255,0,51,.06);color:#ffd0d8;cursor:pointer;display:flex;
+    align-items:center;justify-content:center;}
+  .li-btn:active{background:rgba(255,0,51,.25);}
+  .li-btn .material-symbols-outlined{font-size:15px;}
+  .li-btn.del{border-color:rgba(255,51,85,.4);color:#ff3355;}
+  .li-btn:disabled{opacity:.35;cursor:not-allowed;}
+
+  .badge{font-size:.6rem;padding:3px 8px;border-radius:6px;font-weight:700;
+    background:rgba(255,0,51,.15);color:#ff8aa3;border:1px solid rgba(255,0,51,.3);}
+  .badge.ok{background:rgba(59,230,160,.12);color:#3be6a0;border-color:rgba(59,230,160,.35);}
+  .badge.warn{background:rgba(255,190,77,.12);color:#ffbe4d;border-color:rgba(255,190,77,.3);}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+    background:rgba(20,10,12,.95);border:1px solid #ff0033;color:#f0e6e8;
+    padding:10px 20px;border-radius:12px;font-size:.82rem;font-weight:600;
+    box-shadow:0 0 20px rgba(255,0,51,.5);pointer-events:none;
+    transition:transform .3s,opacity .3s;opacity:0;z-index:999;}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+  #gate{position:fixed;inset:0;z-index:5000;background:rgba(5,2,3,.96);backdrop-filter:blur(10px);
+    display:flex;align-items:center;justify-content:center;padding:20px;}
+  .gate-card{width:100%;max-width:360px;background:linear-gradient(180deg,rgba(30,15,18,.98),rgba(15,8,9,.98));
+    border:1px solid rgba(255,0,51,.4);border-radius:16px;padding:24px;text-align:center;
+    box-shadow:0 0 60px rgba(255,0,51,.35);}
+  .gate-icon{width:60px;height:60px;border-radius:50%;margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle,rgba(255,0,51,.2),rgba(255,0,51,.05));
+    border:1px solid rgba(255,0,51,.4);box-shadow:0 0 24px rgba(255,0,51,.5);}
+  .gate-icon .material-symbols-outlined{font-size:28px;color:#ff0033;}
+  .gate-title{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;letter-spacing:.15em;
+    color:#ffd0d8;text-transform:uppercase;margin-bottom:6px;}
+  .gate-sub{font-size:.75rem;color:#c9a3a8;margin-bottom:18px;}
+
+  .social-edit-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px;}
+  .social-edit-row{display:flex;gap:6px;align-items:center;}
+  .social-edit-row select{flex:0 0 100px;font-size:.78rem;padding:8px 10px;}
+  .social-edit-row input{flex:1;font-size:.78rem;padding:8px 10px;}
+
+  .sync-badge{font-size:.65rem;padding:3px 8px;border-radius:6px;font-weight:700;letter-spacing:.08em;
+    background:rgba(59,230,160,.12);color:#3be6a0;border:1px solid rgba(59,230,160,.35);}
+  .sync-badge.off{background:rgba(255,190,77,.12);color:#ffbe4d;border-color:rgba(255,190,77,.3);}
+
+  .media-preview{display:flex;align-items:center;gap:12px;margin-top:8px;padding:10px;
+    background:rgba(255,0,51,.05);border:1px solid rgba(255,0,51,.2);border-radius:10px;}
+  .media-preview img{width:60px;height:60px;border-radius:50%;object-fit:cover;
+    border:1px solid rgba(255,0,51,.4);background:#0f0809;}
+  .media-preview .mp-info{font-size:.72rem;color:#c9a3a8;line-height:1.5;}
+  .media-preview .mp-info b{color:#ff4d6d;}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <button class="back" onclick="location.href='index.html'">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+    <h1>Admin Panel</h1>
+    <span class="sync-badge off" id="sync-badge">LOCAL</span>
+    <button class="back" onclick="adminLogout()">
+      <span class="material-symbols-outlined">logout</span>
+    </button>
+  </header>
+
+  <div id="gate">
+    <div class="gate-card">
+      <div class="gate-icon"><span class="material-symbols-outlined">admin_panel_settings</span></div>
+      <div class="gate-title">Admin Login</div>
+      <div class="gate-sub">Enter admin password to continue.</div>
+      <input type="password" id="gate-input" placeholder="••••••••" autocomplete="off"/>
+      <div style="color:#ff3355;font-size:.75rem;margin-top:10px;min-height:16px;font-weight:600;" id="gate-err"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="adminLogin()">LOGIN</button>
+      <div style="font-size:.7rem;color:#7d5c61;margin-top:12px;">Default: admin123</div>
+    </div>
+  </div>
+
+  <div id="panel" style="display:none;">
+
+    <!-- STATS -->
+    <div class="card" data-card="stats">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">bar_chart</span>Statistics</h2>
+        <span class="card-lock"><span class="material-symbols-outlined">visibility</span>VIEW</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="num" id="stat-visits">0</div><div class="lbl">Total Visits</div></div>
+        <div class="stat"><div class="num" id="stat-demo">0</div><div class="lbl">Demo Used</div></div>
+        <div class="stat"><div class="num" id="stat-active">0</div><div class="lbl">Active Key Users</div></div>
+        <div class="stat"><div class="num" id="stat-keys">0</div><div class="lbl">Total Keys</div></div>
+      </div>
+    </div>
+
+    <!-- FIREBASE -->
+    <div class="card" data-card="firebase">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">cloud</span>Firebase Config</h2>
+        <button class="edit-toggle" onclick="toggleEdit('firebase', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+      <p style="font-size:.75rem;color:#7d5c61;line-height:1.5;margin-bottom:10px;">
+        Firebase web config paste karo. Iske baad admin ke saare changes Firestore mein sync honge.
+      </p>
+      <label>Firebase Config (JSON)</label>
+      <textarea id="in-fbconfig" class="editable" style="min-height:140px;" disabled placeholder='{"apiKey":"...","projectId":"...","authDomain":"..."}'></textarea>
+      <div class="edit-bar" data-bar="firebase">
+        <button class="btn btn-ghost" onclick="cancelEdit('firebase', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="saveFirebase(this)">SAVE &amp; CONNECT</button>
+      </div>
+    </div>
+
+    <!-- BRANDING -->
+    <div class="card" data-card="branding">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">branding_watermark</span>Branding</h2>
+        <button class="edit-toggle" onclick="toggleEdit('branding', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+      <label>Site Title</label>
+      <input id="in-title" class="editable" type="text" disabled/>
+      <label>Description (meta)</label>
+      <textarea id="in-desc" class="editable" style="min-height:60px;" disabled></textarea>
+      <label>Logo URL</label>
+      <input id="in-logo" class="editable" type="text" disabled/>
+      <label>Favicon URL (empty = default)</label>
+      <input id="in-favicon" class="editable" type="text" disabled/>
+      <div class="edit-bar" data-bar="branding">
+        <button class="btn btn-ghost" onclick="cancelEdit('branding', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="saveBranding(this)">SAVE</button>
+      </div>
+    </div>
+
+    <!-- MEDIA & SIZES -->
+    <div class="card" data-card="media">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">image</span>Media & Sizes</h2>
+        <button class="edit-toggle" onclick="toggleEdit('media', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+
+      <label>Core Orb Image URL (empty = use logo)</label>
+      <input id="in-core-img" class="editable" type="text" disabled placeholder="https://..."/>
+      <label>Core Orb Image Size (px, 20–60)</label>
+      <input id="in-core-size" class="editable" type="number" min="20" max="60" disabled value="38"/>
+
+      <div class="media-preview">
+        <img id="prev-core" alt="core preview"/>
+        <div class="mp-info">
+          <b>Core preview</b><br/>
+          Orb ke andar yahi image dikhegi
+        </div>
+      </div>
+
+      <div style="height:1px;background:rgba(255,0,51,.2);margin:16px 0;"></div>
+
+      <label>Loading Page Logo URL (empty = use logo)</label>
+      <input id="in-loading-logo" class="editable" type="text" disabled placeholder="https://..."/>
+      <label>Loading Page Logo Size (px, 40–200)</label>
+      <input id="in-loading-size" class="editable" type="number" min="40" max="200" disabled value="90"/>
+
+      <div class="media-preview">
+        <img id="prev-loading" alt="loading preview"/>
+        <div class="mp-info">
+          <b>Loading preview</b><br/>
+          Loading screen pe yahi image dikhegi
+        </div>
+      </div>
+
+      <div class="edit-bar" data-bar="media">
+        <button class="btn btn-ghost" onclick="cancelEdit('media', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="saveMedia(this)">SAVE</button>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="card" data-card="footer">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">call_to_action</span>Footer Text</h2>
+        <button class="edit-toggle" onclick="toggleEdit('footer', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+      <label>Developed By</label>
+      <input id="in-dev" class="editable" type="text" disabled/>
+      <label>Copyright</label>
+      <input id="in-copy" class="editable" type="text" disabled/>
+      <label>Powered By</label>
+      <input id="in-powered" class="editable" type="text" disabled/>
+      <div class="edit-bar" data-bar="footer">
+        <button class="btn btn-ghost" onclick="cancelEdit('footer', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="saveFooter(this)">SAVE</button>
+      </div>
+    </div>
+
+    <!-- SOCIALS -->
+    <div class="card" data-card="socials">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">share</span>Social Links</h2>
+        <button class="edit-toggle" onclick="toggleEdit('socials', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+      <div id="social-list" class="social-edit-grid"></div>
+      <div class="edit-bar" data-bar="socials">
+        <button class="btn btn-ghost" onclick="cancelEdit('socials', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="saveSocials(this)">SAVE</button>
+      </div>
+    </div>
+
+    <!-- ACCESS KEYS -->
+    <div class="card" data-card="keys">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">vpn_key</span>Access Keys</h2>
+        <button class="edit-toggle" onclick="toggleEdit('keys', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+      <div id="keys-list"></div>
+      <div id="keys-new-block" style="display:none;">
+        <label>New Key Code</label>
+        <input id="in-key-code" type="text" placeholder="Auto if empty"/>
+        <label>Label</label>
+        <input id="in-key-label" type="text" placeholder="e.g. VIP key"/>
+        <label>Max Uses (0 = unlimited)</label>
+        <input id="in-key-max" type="number" min="0" value="0"/>
+        <label>Expires In (days, 0 = never)</label>
+        <input id="in-key-days" type="number" min="0" value="0"/>
+      </div>
+      <div class="edit-bar" data-bar="keys">
+        <button class="btn btn-ghost" onclick="cancelEdit('keys', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="saveKeys(this)">SAVE CHANGES</button>
+      </div>
+    </div>
+
+    <!-- ACTIVE USERS -->
+    <div class="card" data-card="active">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">groups</span>Active Key Users (30m)</h2>
+        <span class="card-lock"><span class="material-symbols-outlined">visibility</span>VIEW</span>
+      </div>
+      <div id="active-users"></div>
+    </div>
+
+    <!-- DEMO USERS -->
+    <div class="card" data-card="demo">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">person_search</span>Demo Users</h2>
+        <button class="edit-toggle" onclick="toggleEdit('demo', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">MANAGE</span>
+        </button>
+      </div>
+      <div id="demo-users"></div>
+      <div class="edit-bar" data-bar="demo">
+        <button class="btn btn-ghost" onclick="cancelEdit('demo', this)">CANCEL</button>
+        <button class="btn btn-danger" onclick="resetDemoUsers(this)">RESET DEMO USERS</button>
+      </div>
+    </div>
+
+    <!-- VISITS -->
+    <div class="card" data-card="visits">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">history</span>Recent Visits</h2>
+        <span class="card-lock"><span class="material-symbols-outlined">visibility</span>VIEW</span>
+      </div>
+      <div id="visits-list"></div>
+    </div>
+
+    <!-- PASSWORD -->
+    <div class="card" data-card="password">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">password</span>Change Admin Password</h2>
+        <button class="edit-toggle" onclick="toggleEdit('password', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">EDIT</span>
+        </button>
+      </div>
+      <label>Current Password</label>
+      <input id="in-old-pass" class="editable" type="password" disabled/>
+      <label>New Password</label>
+      <input id="in-new-pass" class="editable" type="password" disabled/>
+      <label>Confirm New Password</label>
+      <input id="in-new-pass2" class="editable" type="password" disabled/>
+      <div class="edit-bar" data-bar="password">
+        <button class="btn btn-ghost" onclick="cancelEdit('password', this)">CANCEL</button>
+        <button class="btn btn-primary" onclick="changePassword(this)">SAVE</button>
+      </div>
+    </div>
+
+    <!-- DANGER -->
+    <div class="card" data-card="danger">
+      <div class="card-head">
+        <h2><span class="material-symbols-outlined">warning</span>Danger Zone</h2>
+        <button class="edit-toggle" onclick="toggleEdit('danger', this)">
+          <span class="material-symbols-outlined">edit</span><span class="et-label">UNLOCK</span>
+        </button>
+      </div>
+      <div style="font-size:.75rem;color:#7d5c61;line-height:1.5;">Sab kuch permanently delete. Sirf unlocked state mein chalega.</div>
+      <div class="edit-bar" data-bar="danger">
+        <button class="btn btn-ghost" onclick="cancelEdit('danger', this)">CANCEL</button>
+        <button class="btn btn-danger" onclick="resetAll(this)">RESET ALL DATA</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+let ADMIN_AUTH = false;
+const AUTH_KEY = 'if_admin_auth_v2';
+const EDIT_STATE = {};
+const EDIT_SNAPSHOT = {};
+let workingState = null;
+let workingSocials = [];
+
+function toast(m){
+  const t=document.getElementById('toast');
+  t.textContent=m;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+function updateSyncBadge(){
+  const b = document.getElementById('sync-badge');
+  if(IF.fbReady()){ b.textContent='FIREBASE'; b.classList.add('ok'); b.classList.remove('off'); }
+  else { b.textContent='LOCAL'; b.classList.remove('ok'); b.classList.add('off'); }
+}
+
+function updatePreviews(){
+  const coreSrc = document.getElementById('in-core-img').value.trim() || (workingState && workingState.branding.logo) || '';
+  const loadingSrc = document.getElementById('in-loading-logo').value.trim() || (workingState && workingState.branding.logo) || '';
+  const p1 = document.getElementById('prev-core'); if(p1) p1.src = coreSrc;
+  const p2 = document.getElementById('prev-loading'); if(p2) p2.src = loadingSrc;
+}
+
+/* ---------- LOGIN ---------- */
+function adminLogin(){
+  const v=document.getElementById('gate-input').value.trim();
+  const a=IF.loadAdmin();
+  if(v===a.password){
+    ADMIN_AUTH=true;
+    sessionStorage.setItem(AUTH_KEY,'1');
+    document.getElementById('gate').style.display='none';
+    document.getElementById('panel').style.display='block';
+    const cfg = IF.getFbConfig();
+    if(cfg) IF.initFirebase();
+    attachAdminLiveSync();
+    updateSyncBadge();
+    renderAll();
+  } else {
+    document.getElementById('gate-err').textContent='Wrong password';
+  }
+}
+function adminLogout(){
+  ADMIN_AUTH=false;
+  sessionStorage.removeItem(AUTH_KEY);
+  document.getElementById('gate').style.display='flex';
+  document.getElementById('panel').style.display='none';
+}
+document.getElementById('gate-input').addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin();});
+
+function attachAdminLiveSync(){
+  if(!IF.fbReady()) return;
+  IF.subscribeState((state)=>{
+    const editingCard = Object.keys(EDIT_STATE).find(k => EDIT_STATE[k]);
+    if(editingCard){ console.log('[IF] skip live update, card editing'); return; }
+    workingState = state;
+    workingSocials = JSON.parse(JSON.stringify(state.socials));
+    renderAll();
+  });
+}
+
+/* ---------- EDIT MODE ---------- */
+function setCardEditing(cardName, editing){
+  const card = document.querySelector(`[data-card="${cardName}"]`);
+  if(!card) return;
+  card.classList.toggle('editing', editing);
+  card.querySelectorAll('.editable').forEach(el => { el.disabled = !editing; });
+  const bar = card.querySelector(`[data-bar="${cardName}"]`);
+  if(bar) bar.classList.toggle('show', editing);
+  const btn = card.querySelector('.edit-toggle');
+  if(btn){
+    btn.classList.toggle('active', editing);
+    const lbl = btn.querySelector('.et-label');
+    if(lbl){
+      if(cardName==='demo') lbl.textContent = editing ? 'CLOSE' : 'MANAGE';
+      else if(cardName==='danger') lbl.textContent = editing ? 'OPEN' : 'UNLOCK';
+      else lbl.textContent = editing ? 'EDITING' : 'EDIT';
+    }
+    const icon = btn.querySelector('.material-symbols-outlined');
+    if(icon) icon.textContent = editing ? 'check_circle' : 'edit';
+  }
+  if(cardName==='keys'){
+    const nb = document.getElementById('keys-new-block');
+    if(nb) nb.style.display = editing ? 'block' : 'none';
+    renderKeys(editing);
+  }
+  if(cardName==='socials') renderSocialsEditor(editing);
+  if(cardName==='media' && editing) updatePreviews();
+}
+function toggleEdit(cardName, btnEl){
+  const card = document.querySelector(`[data-card="${cardName}"]`);
+  if(!card) return;
+  const isEditing = card.classList.contains('editing');
+  const anyEditing = Object.keys(EDIT_STATE).find(k => EDIT_STATE[k]);
+  if(anyEditing && anyEditing !== cardName){ toast('Pehle current card save/cancel karo'); return; }
+  if(isEditing){ cancelEdit(cardName); return; }
+  EDIT_SNAPSHOT[cardName] = captureCardValues(cardName);
+  EDIT_STATE[cardName] = true;
+  setCardEditing(cardName, true);
+}
+function captureCardValues(cardName){
+  const snap = {};
+  const card = document.querySelector(`[data-card="${cardName}"]`);
+  if(!card) return snap;
+  card.querySelectorAll('input,textarea,select').forEach(el=>{ if(el.id) snap[el.id]=el.value; });
+  if(cardName==='socials') snap.__socials = JSON.parse(JSON.stringify(workingSocials));
+  return snap;
+}
+function restoreCardValues(cardName){
+  const snap = EDIT_SNAPSHOT[cardName]; if(!snap) return;
+  Object.entries(snap).forEach(([id,v])=>{ if(id.startsWith('__')) return; const el=document.getElementById(id); if(el) el.value=v; });
+  if(cardName==='socials' && snap.__socials){
+    workingSocials = JSON.parse(JSON.stringify(snap.__socials));
+    renderSocialsEditor(false);
+  }
+  if(cardName==='media') updatePreviews();
+}
+function cancelEdit(cardName){
+  restoreCardValues(cardName);
+  EDIT_STATE[cardName] = false;
+  setCardEditing(cardName, false);
+  toast('Cancelled');
+}
+
+/* ---------- RENDER ---------- */
+async function renderAll(){
+  workingState = await IF.loadState();
+  workingSocials = JSON.parse(JSON.stringify(workingState.socials));
+
+  document.getElementById('in-title').value = workingState.branding.title || '';
+  document.getElementById('in-desc').value = workingState.branding.description || '';
+  document.getElementById('in-logo').value = workingState.branding.logo || '';
+  document.getElementById('in-favicon').value = workingState.branding.favicon || '';
+
+  document.getElementById('in-core-img').value = workingState.branding.coreImage || '';
+  document.getElementById('in-core-size').value = workingState.branding.coreSize || 38;
+  document.getElementById('in-loading-logo').value = workingState.branding.loadingLogo || '';
+  document.getElementById('in-loading-size').value = workingState.branding.loadingSize || 90;
+
+  document.getElementById('in-dev').value = workingState.footer.developedBy || '';
+  document.getElementById('in-copy').value = workingState.footer.copyright || '';
+  document.getElementById('in-powered').value = workingState.footer.poweredBy || '';
+
+  const fbcfg = IF.getFbConfig();
+  document.getElementById('in-fbconfig').value = fbcfg ? JSON.stringify(fbcfg, null, 2) : '';
+
+  renderSocialsEditor(false);
+  renderKeys(false);
+  renderStats();
+  renderActiveUsers();
+  renderDemoUsers();
+  renderVisits();
+  updateSyncBadge();
+  updatePreviews();
+
+  ['firebase','branding','media','footer','socials','keys','demo','password','danger'].forEach(c=>{
+    setCardEditing(c, false);
+    EDIT_STATE[c] = false;
+  });
+}
+
+function renderStats(){
+  const v = IF.visits();
+  const d = IF.demoInfo();
+  const a = IF.activeKeyUsers();
+  const s = IF.loadStateLocal();
+  document.getElementById('stat-visits').textContent = v.count || 0;
+  document.getElementById('stat-demo').textContent = d.records.length || 0;
+  document.getElementById('stat-active').textContent = a.length || 0;
+  document.getElementById('stat-keys').textContent = s.accessKeys.length || 0;
+}
+
+function renderSocialsEditor(editable){
+  const c=document.getElementById('social-list');
+  c.innerHTML='';
+  workingSocials.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.className='social-edit-row';
+    row.innerHTML=`
+      <select data-i="${i}" data-k="icon" ${editable?'':'disabled'}>
+        <option value="telegram"${s.icon==='telegram'?' selected':''}>Telegram</option>
+        <option value="whatsapp"${s.icon==='whatsapp'?' selected':''}>WhatsApp</option>
+        <option value="youtube"${s.icon==='youtube'?' selected':''}>YouTube</option>
+        <option value="instagram"${s.icon==='instagram'?' selected':''}>Instagram</option>
+      </select>
+      <input data-i="${i}" data-k="url" type="text" value="${s.url||''}" placeholder="URL" ${editable?'':'disabled'}/>
+      <button class="li-btn del" onclick="removeSocial(${i})" ${editable?'':'disabled'}>
+        <span class="material-symbols-outlined">delete</span>
+      </button>`;
+    c.appendChild(row);
+  });
+  if(editable){
+    const addRow = document.createElement('div');
+    addRow.className='social-edit-row';
+    addRow.innerHTML = `<button class="btn btn-ghost" style="width:100%;" onclick="addSocial()">+ ADD NEW SOCIAL</button>`;
+    c.appendChild(addRow);
+  } else if(!workingSocials.length){
+    c.innerHTML = '<div style="font-size:.74rem;color:#7d5c61;text-align:center;padding:8px;">No socials</div>';
+  }
+  c.querySelectorAll('input,select').forEach(el=>{
+    el.addEventListener('input',()=>{
+      const i=parseInt(el.dataset.i);
+      const k=el.dataset.k;
+      workingSocials[i][k]=el.value;
+    });
+  });
+}
+function addSocial(){
+  if(!EDIT_STATE.socials){ toast('Click EDIT first'); return; }
+  workingSocials.push({id:'s'+Date.now(), name:'New', url:'https://', icon:'telegram'});
+  renderSocialsEditor(true);
+}
+function removeSocial(i){
+  if(!EDIT_STATE.socials){ toast('Click EDIT first'); return; }
+  workingSocials.splice(i,1);
+  renderSocialsEditor(true);
+}
+
+/* ---------- SAVE ---------- */
+async function saveFirebase(){
+  const raw = document.getElementById('in-fbconfig').value.trim();
+  if(!raw){ toast('Config empty'); return; }
+  let cfg;
+  try { cfg = JSON.parse(raw); } catch { return toast('Invalid JSON'); }
+  if(!cfg.apiKey || !cfg.projectId) return toast('apiKey/projectId missing');
+  IF.setFbConfig(cfg);
+  const ok = IF.initFirebase();
+  if(!ok) return toast('Firebase init failed');
+  const st = await IF.loadState();
+  await IF.saveState(st);
+  toast('Firebase connected & synced');
+  updateSyncBadge();
+  attachAdminLiveSync();
+  EDIT_STATE.firebase=false;
+  setCardEditing('firebase', false);
+}
+
+async function saveBranding(){
+  const st = await IF.loadState();
+  st.branding.title = document.getElementById('in-title').value.trim() || 'ILLUSION X FETCHING';
+  st.branding.description = document.getElementById('in-desc').value.trim();
+  st.branding.logo = document.getElementById('in-logo').value.trim();
+  st.branding.favicon = document.getElementById('in-favicon').value.trim();
+  await IF.saveState(st);
+  EDIT_STATE.branding=false;
+  setCardEditing('branding', false);
+  toast('Branding saved (synced)');
+  updatePreviews();
+}
+
+async function saveMedia(){
+  const st = await IF.loadState();
+  st.branding.coreImage = document.getElementById('in-core-img').value.trim();
+  let cs = parseInt(document.getElementById('in-core-size').value) || 38;
+  cs = Math.max(20, Math.min(60, cs));
+  st.branding.coreSize = cs;
+
+  st.branding.loadingLogo = document.getElementById('in-loading-logo').value.trim();
+  let ls = parseInt(document.getElementById('in-loading-size').value) || 90;
+  ls = Math.max(40, Math.min(200, ls));
+  st.branding.loadingSize = ls;
+
+  await IF.saveState(st);
+  EDIT_STATE.media = false;
+  setCardEditing('media', false);
+  toast('Media saved (synced)');
+}
+
+async function saveFooter(){
+  const st = await IF.loadState();
+  st.footer.developedBy = document.getElementById('in-dev').value.trim();
+  st.footer.copyright = document.getElementById('in-copy').value.trim();
+  st.footer.poweredBy = document.getElementById('in-powered').value.trim();
+  await IF.saveState(st);
+  EDIT_STATE.footer=false;
+  setCardEditing('footer', false);
+  toast('Footer saved (synced)');
+}
+
+async function saveSocials(){
+  const st = await IF.loadState();
+  st.socials = workingSocials.filter(s => s.url && s.url.trim());
+  await IF.saveState(st);
+  EDIT_STATE.socials=false;
+  setCardEditing('socials', false);
+  toast('Socials saved (synced)');
+  renderAll();
+}
+
+/* ---------- KEYS ---------- */
+function renderKeys(editable){
+  const st = IF.loadStateLocal();
+  const c=document.getElementById('keys-list');
+  c.innerHTML='';
+  if(!st.accessKeys.length){
+    c.innerHTML='<div style="font-size:.74rem;color:#7d5c61;text-align:center;padding:8px;">No keys</div>';
+    return;
+  }
+  st.accessKeys.forEach((k,i)=>{
+    const used = IF.usedKeysList()[k.code] || [];
+    const expired = k.expiresAt && k.expiresAt < Date.now();
+    const exhausted = k.maxUses>0 && k.used>=k.maxUses;
+    const status = !k.active ? 'DISABLED' : expired ? 'EXPIRED' : exhausted ? 'EXHAUSTED' : 'ACTIVE';
+    const badgeCls = status==='ACTIVE' ? 'badge ok' : status==='EXPIRED'||status==='EXHAUSTED' ? 'badge warn' : 'badge';
+    const el=document.createElement('div');
+    el.className='list-item';
+    el.innerHTML=`
+      <div class="li-main">
+        <div class="li-title">${k.code}</div>
+        <div class="li-sub">${k.label||'—'} · Used: ${k.used||0}${k.maxUses>0?'/'+k.maxUses:''} · Sessions: ${used.length}</div>
+      </div>
+      <span class="${badgeCls}">${status}</span>
+      <div class="li-actions">
+        <button class="li-btn" onclick="toggleKey(${i})" ${editable?'':'disabled'}>
+          <span class="material-symbols-outlined">${k.active?'toggle_on':'toggle_off'}</span>
+        </button>
+        <button class="li-btn del" onclick="deleteKey(${i})" ${editable?'':'disabled'}>
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+      </div>`;
+    c.appendChild(el);
+  });
+  if(editable){
+    const createRow = document.createElement('div');
+    createRow.style.cssText='margin-top:10px;';
+    createRow.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="createKey()">+ GENERATE NEW KEY</button>`;
+    c.appendChild(createRow);
+  }
+}
+async function toggleKey(i){
+  if(!EDIT_STATE.keys){ toast('Click EDIT first'); return; }
+  const st = await IF.loadState();
+  st.accessKeys[i].active = !st.accessKeys[i].active;
+  await IF.saveState(st);
+  renderKeys(true); renderStats();
+}
+async function deleteKey(i){
+  if(!EDIT_STATE.keys){ toast('Click EDIT first'); return; }
+  if(!confirm('Delete this key?'))return;
+  const st = await IF.loadState();
+  st.accessKeys.splice(i,1);
+  await IF.saveState(st);
+  renderKeys(true); renderStats();
+}
+async function createKey(){
+  if(!EDIT_STATE.keys){ toast('Click EDIT first'); return; }
+  const st = await IF.loadState();
+  let code = document.getElementById('in-key-code').value.trim();
+  if(!code){
+    code = 'IF-' + Math.random().toString(36).slice(2,8).toUpperCase() + '-' + Date.now().toString(36).slice(-4).toUpperCase();
+  }
+  const label = document.getElementById('in-key-label').value.trim() || 'Key';
+  const max = parseInt(document.getElementById('in-key-max').value)||0;
+  const days = parseInt(document.getElementById('in-key-days').value)||0;
+  if(st.accessKeys.find(k=>k.code===code)){toast('Key already exists');return;}
+  st.accessKeys.push({
+    code, label,
+    createdAt: Date.now(),
+    expiresAt: days>0 ? Date.now() + days*24*60*60*1000 : 0,
+    maxUses: max, used: 0, active: true
+  });
+  await IF.saveState(st);
+  document.getElementById('in-key-code').value='';
+  document.getElementById('in-key-label').value='';
+  document.getElementById('in-key-max').value='0';
+  document.getElementById('in-key-days').value='0';
+  toast('Key created & synced');
+  renderKeys(true); renderStats();
+}
+function saveKeys(){
+  EDIT_STATE.keys=false;
+  setCardEditing('keys', false);
+  toast('Keys saved');
+  renderAll();
+}
+
+/* ---------- LISTS ---------- */
+function renderActiveUsers(){
+  const a = IF.activeKeyUsers();
+  const c=document.getElementById('active-users');
+  c.innerHTML='';
+  if(!a.length){c.innerHTML='<div style="font-size:.74rem;color:#7d5c61;text-align:center;padding:8px;">No active users</div>';return;}
+  a.slice(0,30).forEach(u=>{
+    const el=document.createElement('div');
+    el.className='list-item';
+    el.innerHTML=`<div class="li-main">
+      <div class="li-title">${u.code}</div>
+      <div class="li-sub">Session: ${u.sessionId} · ${new Date(u.at).toLocaleString()}</div>
+    </div><span class="badge ok">LIVE</span>`;
+    c.appendChild(el);
+  });
+}
+function renderDemoUsers(){
+  const d = IF.demoInfo();
+  const c=document.getElementById('demo-users');
+  c.innerHTML='';
+  if(!d.records.length){c.innerHTML='<div style="font-size:.74rem;color:#7d5c61;text-align:center;padding:8px;">No demo users</div>';return;}
+  d.records.slice(-30).reverse().forEach(u=>{
+    const el=document.createElement('div');
+    el.className='list-item';
+    el.innerHTML=`<div class="li-main">
+      <div class="li-title">Session: ${u.sid.slice(0,12)}</div>
+      <div class="li-sub">${new Date(u.at).toLocaleString()} · ${(u.ua||'').slice(0,60)}</div>
+    </div><span class="badge warn">DEMO</span>`;
+    c.appendChild(el);
+  });
+}
+function resetDemoUsers(){
+  if(!confirm('Allow all users to use demo again?'))return;
+  const d = IF.demoInfo();
+  d.usedSessions=[];d.records=[];
+  localStorage.setItem(IF.KEYS.DEMO, JSON.stringify(d));
+  toast('Demo reset');
+  renderDemoUsers();renderStats();
+  EDIT_STATE.demo=false;
+  setCardEditing('demo', false);
+}
+function renderVisits(){
+  const v=IF.visits();
+  const c=document.getElementById('visits-list');
+  c.innerHTML='';
+  if(!v.list.length){c.innerHTML='<div style="font-size:.74rem;color:#7d5c61;text-align:center;padding:8px;">No visits</div>';return;}
+  v.list.slice(-30).reverse().forEach(u=>{
+    const el=document.createElement('div');
+    el.className='list-item';
+    el.innerHTML=`<div class="li-main">
+      <div class="li-title">${u.sid.slice(0,12)}</div>
+      <div class="li-sub">${new Date(u.at).toLocaleString()} · ${(u.ua||'').slice(0,60)}</div>
+    </div>`;
+    c.appendChild(el);
+  });
+}
+
+/* ---------- PASSWORD ---------- */
+function changePassword(){
+  const oldP=document.getElementById('in-old-pass').value;
+  const n1=document.getElementById('in-new-pass').value;
+  const n2=document.getElementById('in-new-pass2').value;
+  const a=IF.loadAdmin();
+  if(oldP!==a.password){toast('Wrong current password');return;}
+  if(!n1||n1.length<4){toast('New password too short');return;}
+  if(n1!==n2){toast('Passwords do not match');return;}
+  a.password=n1;a.lastChanged=Date.now();
+  IF.saveAdmin(a);
+  document.getElementById('in-old-pass').value='';
+  document.getElementById('in-new-pass').value='';
+  document.getElementById('in-new-pass2').value='';
+  toast('Password changed');
+  EDIT_STATE.password=false;
+  setCardEditing('password', false);
+}
+
+/* ---------- DANGER ---------- */
+function resetAll(){
+  if(!confirm('Reset ALL data? Cannot be undone.'))return;
+  if(!confirm('Really? Everything.'))return;
+  Object.values(IF.KEYS).forEach(k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch{}});
+  toast('All reset');
+  setTimeout(()=>{location.reload();},900);
+}
+
+/* ---------- PREVIEW LIVE ---------- */
+document.addEventListener('input', (e)=>{
+  if(['in-core-img','in-loading-logo'].includes(e.target.id)) updatePreviews();
+});
+
+/* ---------- INIT ---------- */
+if(sessionStorage.getItem(AUTH_KEY)==='1'){
+  ADMIN_AUTH=true;
+  document.getElementById('gate').style.display='none';
+  document.getElementById('panel').style.display='block';
+  const cfg = IF.getFbConfig();
+  if(cfg) IF.initFirebase();
+  attachAdminLiveSync();
+  updateSyncBadge();
+  renderAll();
+}
+</script>
+</body>
+</html>

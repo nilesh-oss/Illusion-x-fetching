@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ILLUSION FETCHING — Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#0a0507;--panel:#140a0c;--line:#2d1518;--line-bright:#47232a;
+    --cyan:#ff0033;--cyan-dim:#731a26;--violet:#ff0066;--green:#ff8a9e;
+    --amber:#ffbe4d;--red:#ff3355;--ink:#f7eaec;--ink-dim:#c9a3a8;--ink-faint:#7d5c61;
+    --sans:'Rajdhani',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --mono:'Share Tech Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{
+    background:
+      radial-gradient(ellipse 640px 380px at 15% -6%,rgba(255,0,102,.12),transparent 60%),
+      radial-gradient(ellipse 640px 420px at 100% 10%,rgba(255,0,51,.10),transparent 55%),
+      var(--bg);
+    background-attachment:fixed;color:var(--ink);font-family:var(--sans);
+    min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+    user-select:none;-webkit-user-select:none;
+  }
+  body::before{content:"";position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(255,0,51,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,0,51,.035) 1px,transparent 1px);
+    background-size:36px 36px;
+    mask-image:radial-gradient(ellipse 900px 700px at 50% 0%,black,transparent 80%);
+    pointer-events:none;z-index:0;}
+  .app{position:relative;z-index:1;max-width:540px;margin:0 auto;min-height:100vh;
+    padding:calc(16px + env(safe-area-inset-top,0px)) 18px calc(48px + env(safe-area-inset-bottom,0px));}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 18px;
+    position:sticky;top:0;z-index:20;background:rgba(10,5,7,.85);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+  .icon-btn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line-bright);border-radius:10px;background:rgba(20,10,12,.65);
+    color:var(--ink);cursor:pointer;transition:transform .15s,background-color .15s;}
+  .icon-btn:active{transform:scale(.92);background:rgba(255,0,51,.15);}
+  .icon-btn svg{width:18px;height:18px;}
+  header h1{font-size:1.25rem;font-weight:700;letter-spacing:.14em;color:var(--ink);
+    text-shadow:0 0 18px rgba(255,0,51,.35);font-family:'Rajdhani',sans-serif;}
+  .save-link{font-weight:700;font-size:.84rem;letter-spacing:.14em;color:var(--cyan);
+    text-shadow:0 0 12px rgba(255,0,51,.5);background:none;border:none;padding:8px 12px;
+    cursor:pointer;border-radius:8px;transition:transform .15s,background-color .15s;}
+  .save-link:active{transform:scale(.92);background:rgba(255,0,51,.12);}
+
+  .session-info{background:rgba(255,0,51,.06);border:1px solid rgba(255,0,51,.25);
+    border-radius:10px;padding:10px 12px;margin-bottom:18px;font-size:.74rem;
+    color:#ffd0d8;font-family:var(--mono);display:flex;align-items:center;gap:8px;}
+  .session-info .dot{width:6px;height:6px;border-radius:50%;background:#ff4d6d;
+    box-shadow:0 0 6px #ff4d6d;flex-shrink:0;}
+
+  .section{margin-top:24px;}
+  .section-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px;}
+  .sec-ic{width:32px;height:32px;border-radius:9px;flex-shrink:0;display:flex;
+    align-items:center;justify-content:center;
+    background:linear-gradient(160deg,rgba(255,0,51,.16),rgba(255,0,102,.10));
+    border:1px solid var(--line-bright);}
+  .sec-ic svg{width:16px;height:16px;}
+  .section-head h2{font-size:1.1rem;font-weight:700;letter-spacing:.05em;color:var(--ink);
+    text-shadow:0 0 12px rgba(255,0,51,.25);}
+
+  .panel{background:linear-gradient(180deg,rgba(30,15,18,.75),rgba(12,6,8,.75));
+    border:1px solid var(--line);border-left:2px solid var(--cyan-dim);
+    border-radius:6px 16px 16px 6px;padding:18px;position:relative;
+    box-shadow:0 4px 20px rgba(0,0,0,.35);}
+
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{font-size:.72rem;letter-spacing:.12em;color:var(--ink-faint);
+    margin-bottom:8px;display:block;font-weight:600;}
+
+  select.hud-select,input.hud-input,textarea.hud-textarea{
+    width:100%;background:rgba(10,5,7,.75);border:1px solid var(--line-bright);
+    color:var(--ink);font-family:var(--sans);font-size:.96rem;font-weight:500;
+    padding:12px 14px;border-radius:11px;outline:none;
+    appearance:none;-webkit-appearance:none;user-select:text;-webkit-user-select:text;}
+  textarea.hud-textarea{font-family:var(--mono);font-size:.8rem;resize:vertical;min-height:140px;line-height:1.5;}
+  select.hud-select option{background:#1a0e10;color:var(--ink);}
+  input.hud-input::placeholder,textarea.hud-textarea::placeholder{color:var(--ink-faint);font-weight:400;}
+  select.hud-select:focus,input.hud-input:focus,textarea.hud-textarea:focus{
+    border-color:var(--cyan);box-shadow:0 0 0 3px rgba(255,0,51,.15);}
+  .select-wrap{position:relative;}
+  .select-wrap::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;
+    border-right:2px solid var(--cyan);border-bottom:2px solid var(--cyan);
+    transform:translateY(-65%) rotate(45deg);pointer-events:none;}
+  .input-icon-wrap{position:relative;}
+  .input-icon-wrap input{padding-right:44px;}
+  .eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    color:var(--ink-dim);cursor:pointer;padding:6px;display:flex;align-items:center;}
+  .eye:active{color:var(--cyan);}
+  .eye svg{width:18px;height:18px;}
+  .link-row{display:flex;align-items:center;justify-content:space-between;
+    margin-top:12px;flex-wrap:wrap;gap:8px;}
+  .text-link{font-size:.78rem;color:var(--cyan);letter-spacing:.04em;cursor:pointer;
+    font-weight:600;padding:4px 0;transition:color .15s;}
+  .text-link:active{color:#ff8aa3;}
+  .status-line{font-family:var(--mono);font-size:.75rem;color:var(--ink-faint);}
+  .status-line.ok{color:var(--green);}
+  .status-line.warn{color:var(--amber);}
+  .status-line.err{color:var(--red);}
+
+  .btn{text-align:center;padding:11px 16px;border-radius:11px;font-family:var(--sans);
+    font-weight:700;font-size:.78rem;letter-spacing:.06em;cursor:pointer;
+    border:1px solid var(--line-bright);background:rgba(255,255,255,.03);
+    color:var(--ink-dim);transition:all .15s;}
+  .btn:active{transform:scale(.96);}
+  .btn-solid{background:linear-gradient(180deg,rgba(255,0,51,.18),rgba(255,0,51,.06));
+    color:var(--cyan);border-color:rgba(255,0,51,.45);}
+  .btn-solid:active{background:rgba(255,0,51,.25);}
+  .btn-danger{color:var(--red);border-color:rgba(255,51,85,.35);}
+  .btn-danger:active{background:rgba(255,51,85,.15);}
+  .btn-row{display:flex;gap:12px;}
+  .btn-row .btn{flex:1;}
+
+  .desc{font-size:.84rem;line-height:1.55;color:var(--ink-dim);margin-bottom:16px;}
+
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+    background:rgba(20,10,12,.94);border:1px solid var(--cyan);color:var(--ink);
+    padding:10px 20px;border-radius:12px;font-size:.85rem;font-weight:600;
+    box-shadow:0 0 20px rgba(255,0,51,.4);pointer-events:none;
+    transition:transform .3s cubic-bezier(0.2,1,0.3,1),opacity .3s;
+    opacity:0;z-index:999;max-width:86%;text-align:center;}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+  footer.spacer{height:36px;}
+
+  /* Footer */
+  .site-footer{margin-top:30px;padding:24px 8px 16px;
+    border-top:1px solid rgba(255,0,51,.2);}
+  .footer-dev{text-align:center;font-size:.78rem;color:#c9a3a8;letter-spacing:.05em;line-height:1.7;}
+  .footer-dev b{color:#ff4d6d;font-weight:700;letter-spacing:.1em;
+    font-family:'Rajdhani',sans-serif;text-shadow:0 0 12px rgba(255,0,51,.5);}
+  .footer-copy{text-align:center;font-size:.66rem;color:#7d5c61;margin-top:8px;
+    letter-spacing:.15em;text-transform:uppercase;}
+
+  @media (max-width:380px){
+    .panel{padding:14px;}
+    input.hud-input,textarea.hud-textarea,select.hud-select{font-size:.9rem;padding:10px 12px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="icon-btn" onclick="goBack()" title="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <h1>SETTINGS</h1>
+    <button class="save-link" onclick="saveAll()">SAVE</button>
+  </header>
+
+  <div class="session-info">
+    <span class="dot"></span>
+    <span>Session: <b id="sid">—</b></span>
+  </div>
+
+  <!-- 1. NUMBER API -->
+  <div class="section">
+    <div class="section-head">
+      <div class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ff0033" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+      <h2>Number API</h2>
+    </div>
+    <div class="panel">
+      <span class="field-label">API KEY</span>
+      <div class="input-icon-wrap">
+        <input class="hud-input" id="numApiKey" type="password" placeholder="Number lookup API key" oninput="updateStatus()">
+        <span class="eye" onclick="togglePw('numApiKey',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <span class="field-label">BASE URL (OPTIONAL)</span>
+        <input class="hud-input" id="numApiUrl" type="text" placeholder="https://api.numlookupapi.com/v1/validate" oninput="updateStatus()">
+      </div>
+      <div class="link-row">
+        <span class="text-link" onclick="pasteTo('numApiKey')">Paste</span>
+        <span class="status-line" id="numStatus">● Not set</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. TELEGRAM -->
+  <div class="section">
+    <div class="section-head">
+      <div class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ffbe4d" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+      <h2>Telegram Bot</h2>
+    </div>
+    <div class="panel">
+      <p class="desc" style="font-size:.76rem;margin-bottom:14px;">@BotFather se bot banao. Token + Chat ID fill karo.</p>
+      <span class="field-label">BOT TOKEN</span>
+      <div class="input-icon-wrap">
+        <input class="hud-input" id="tgToken" type="password" placeholder="123456:ABC..." oninput="updateStatus()">
+        <span class="eye" onclick="togglePw('tgToken',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <span class="field-label">CHAT ID</span>
+        <input class="hud-input" id="tgChatId" type="text" placeholder="-1001234567890" oninput="updateStatus()">
+      </div>
+      <div class="link-row">
+        <span class="text-link" onclick="pasteTo('tgToken')">Paste</span>
+        <button class="btn btn-solid" style="padding:7px 14px;font-size:.74rem;" onclick="testTg()">TEST</button>
+      </div>
+      <div class="status-line" id="tgStatus" style="margin-top:10px;">Status: not tested</div>
+    </div>
+  </div>
+
+  <!-- 3. DATABASE API -->
+  <div class="section">
+    <div class="section-head">
+      <div class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ff0033" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg></div>
+      <h2>Database API</h2>
+    </div>
+    <div class="panel">
+      <p class="desc" style="font-size:.76rem;margin-bottom:14px;">Apna REST backend. Termux server.js use karo ya khud ka.</p>
+      <span class="field-label">BASE URL</span>
+      <input class="hud-input" id="dbApiUrl" type="text" placeholder="http://192.168.1.5:3000" oninput="updateStatus()">
+      <div class="field" style="margin-top:14px;">
+        <span class="field-label">API KEY / TOKEN</span>
+        <div class="input-icon-wrap">
+          <input class="hud-input" id="dbApiKey" type="password" placeholder="Bearer token or X-API-Key" oninput="updateStatus()">
+          <span class="eye" onclick="togglePw('dbApiKey',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <span class="field-label">AUTH MODE</span>
+        <div class="select-wrap">
+          <select class="hud-select" id="dbAuthMode" onchange="updateStatus()">
+            <option value="bearer">Bearer &lt;key&gt;</option>
+            <option value="x-api-key">X-API-Key: &lt;key&gt;</option>
+            <option value="none">No auth</option>
+          </select>
+        </div>
+      </div>
+      <div class="link-row">
+        <span class="text-link" onclick="pasteTo('dbApiKey')">Paste</span>
+        <button class="btn btn-solid" style="padding:7px 14px;font-size:.74rem;" onclick="testDb()">TEST</button>
+      </div>
+      <div class="status-line" id="dbStatus" style="margin-top:10px;">Status: not tested</div>
+    </div>
+  </div>
+
+  <!-- 4. FIREBASE -->
+  <div class="section">
+    <div class="section-head">
+      <div class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ffbe4d" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg></div>
+      <h2>Firebase</h2>
+    </div>
+    <div class="panel">
+      <p class="desc" style="font-size:.76rem;margin-bottom:14px;">Firebase Console se web app config paste karo. Sirf apiKey + projectId mandatory.</p>
+      <span class="field-label">FIREBASE CONFIG (JS OBJECT)</span>
+      <textarea class="hud-textarea" id="fbConfig" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "1234567890",
+  "appId": "1:1234:web:abcd..."
+}' oninput="updateStatus()"></textarea>
+      <div class="link-row">
+        <span class="text-link" onclick="pasteFbConfig()">Paste JSON</span>
+        <button class="btn btn-solid" style="padding:7px 14px;font-size:.74rem;" onclick="testFb()">TEST</button>
+      </div>
+      <div class="status-line" id="fbStatus" style="margin-top:10px;">Status: not tested</div>
+    </div>
+  </div>
+
+  <!-- 5. DATA MANAGER -->
+  <div class="section">
+    <div class="section-head">
+      <div class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#ff0033" stroke-width="2"><path d="M4 19V5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M13 3v5h5"/></svg></div>
+      <h2>Data Manager</h2>
+    </div>
+    <div class="panel">
+      <p class="desc">Records DB + Firebase dono se.</p>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="clearSession()">CLEAR</button>
+        <button class="btn btn-solid" onclick="refreshData()">REFRESH</button>
+      </div>
+      <div id="dataList" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="footer-dev">
+      Developed by <b>Mr.Nilesh</b><br/>
+      <span style="font-size:.72rem;">© 2025 ILLUSION FETCHING — All rights reserved</span>
+    </div>
+    <div class="footer-copy">POWERED BY ILLUSION</div>
+  </footer>
+</div>
+
+<div id="toast">Saved</div>
+
+<script>
+const DEFAULT_ACCESS_KEY = "ILLUSION2025";
+const OWNER_CHANNEL = "https://t.me/YourChannel";
+
+function getSessionId(){
+  let id = sessionStorage.getItem('jarvis_sid');
+  if(!id){
+    id = 's_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-6);
+    sessionStorage.setItem('jarvis_sid', id);
+  }
+  return id;
+}
+const SESSION_ID = getSessionId();
+const SETTINGS_KEY = 'jarvis_settings_' + SESSION_ID;
+const UNLOCK_KEY = 'jarvis_unlocked_' + SESSION_ID;
+
+function isUnlocked(){ return sessionStorage.getItem(UNLOCK_KEY) === 'yes'; }
+function requireUnlock(){
+  return new Promise(resolve=>{
+    if(isUnlocked()){resolve(true);return;}
+    const key = prompt('🔒 Enter Access Key to continue:');
+    if(key === DEFAULT_ACCESS_KEY){
+      sessionStorage.setItem(UNLOCK_KEY,'yes');
+      resolve(true);
+    } else {
+      alert('Wrong key. Contact owner: ' + OWNER_CHANNEL);
+      resolve(false);
+    }
+  });
+}
+
+function loadSettings(){
+  try{const r=sessionStorage.getItem(SETTINGS_KEY);return r?JSON.parse(r):{};}
+  catch{return {};}
+}
+function saveSettings(o){try{sessionStorage.setItem(SETTINGS_KEY,JSON.stringify(o));}catch{}}
+
+function goBack(){location.href='index.html';}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+function togglePw(id,el){
+  const i=document.getElementById(id);if(!i)return;
+  const isPw=i.type==='password';
+  i.type=isPw?'text':'password';
+  el.innerHTML=isPw
+    ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+    :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+}
+
+function pasteTo(id){
+  navigator.clipboard.readText().then(t=>{
+    if(t){document.getElementById(id).value=t.trim();updateStatus();showToast('Pasted');}
+  }).catch(()=>showToast('Clipboard unavailable'));
+}
+function pasteFbConfig(){
+  navigator.clipboard.readText().then(t=>{
+    if(t){
+      let clean=t.replace(/^\s*(const|let|var)\s+\w+\s*=\s*/i,'').replace(/;\s*$/,'').trim();
+      document.getElementById('fbConfig').value=clean;
+      updateStatus();showToast('Firebase config pasted');
+    }
+  }).catch(()=>showToast('Clipboard unavailable'));
+}
+
+function updateStatus(){
+  const nk=document.getElementById('numApiKey').value.trim();
+  const ns=document.getElementById('numStatus');
+  ns.textContent=nk?'● Configured':'● Not set';
+  ns.className=nk?'status-line ok':'status-line warn';
+
+  const fs_=document.getElementById('fbStatus');
+  const raw=document.getElementById('fbConfig').value.trim();
+  if(!raw){fs_.textContent='Status: not configured';fs_.className='status-line warn';}
+  else{
+    try{
+      const cfg=JSON.parse(raw);
+      if(cfg.apiKey&&cfg.projectId){fs_.textContent='Status: ● valid';fs_.className='status-line ok';}
+      else{fs_.textContent='Status: ● apiKey/projectId missing';fs_.className='status-line warn';}
+    }catch{fs_.textContent='Status: ● invalid JSON';fs_.className='status-line err';}
+  }
+}
+
+function dbHeaders(){
+  const s=loadSettings();
+  const h={'Content-Type':'application/json','X-Session-Id':SESSION_ID};
+  if(s.dbApiKey){
+    if(s.dbAuthMode==='x-api-key')h['X-API-Key']=s.dbApiKey;
+    else if(s.dbAuthMode==='none'){}
+    else h['Authorization']='Bearer '+s.dbApiKey;
+  }
+  return h;
+}
+function dbUrl(path){
+  const s=loadSettings();
+  if(!s.dbApiUrl)throw new Error('Database API URL missing.');
+  return s.dbApiUrl.replace(/\/$/,'')+path;
+}
+async function dbList(){
+  const r=await fetch(dbUrl('/records'),{headers:dbHeaders()});
+  if(!r.ok)throw new Error('List '+r.status);
+  const j=await r.json();
+  return Array.isArray(j)?j:(j.records||j.data||[]);
+}
+async function dbDelete(id){
+  const r=await fetch(dbUrl('/records/'+encodeURIComponent(id)),{method:'DELETE',headers:dbHeaders()});
+  if(!r.ok)throw new Error('Delete '+r.status);
+  return true;
+}
+async function dbUpdate(id,patch){
+  const r=await fetch(dbUrl('/records/'+encodeURIComponent(id)),{method:'PUT',headers:dbHeaders(),body:JSON.stringify(patch)});
+  if(!r.ok)throw new Error('Update '+r.status);
+  return await r.json().catch(()=>({}));
+}
+async function testDb(){
+  const st=document.getElementById('dbStatus');
+  st.textContent='Status: testing…';st.className='status-line';
+  try{
+    const list=await dbList();
+    st.textContent='Status: ✓ '+list.length+' records';st.className='status-line ok';
+    renderDataList(list.map(x=>({_src:'db',...x})));
+  }catch(e){st.textContent='Status: ✗ '+e.message;st.className='status-line err';}
+}
+
+async function testTg(){
+  const st=document.getElementById('tgStatus');
+  st.textContent='Status: testing…';st.className='status-line';
+  const token=document.getElementById('tgToken').value.trim();
+  const chatId=document.getElementById('tgChatId').value.trim();
+  if(!token||!chatId){st.textContent='Status: ✗ token/chat ID missing';st.className='status-line err';return;}
+  try{
+    const r=await fetch(`https://api.telegram.org/bot${token}/getChat`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatId})
+    });
+    const j=await r.json();
+    if(!j.ok)throw new Error(j.description);
+    st.textContent='Status: ✓ '+(j.result.title||j.result.username||'chat');
+    st.className='status-line ok';
+  }catch(e){st.textContent='Status: ✗ '+e.message;st.className='status-line err';}
+}
+
+let fbDb=null, fbReady=false;
+function initFbFromInput(){
+  const raw=document.getElementById('fbConfig').value.trim();
+  if(!raw)throw new Error('Firebase config missing.');
+  const cfg=JSON.parse(raw);
+  if(!cfg.apiKey||!cfg.projectId)throw new Error('apiKey/projectId missing.');
+  if(firebase.apps.length){try{firebase.app().delete();}catch{}}
+  firebase.initializeApp(cfg);
+  fbDb=firebase.firestore();
+  fbReady=true;
+  return cfg;
+}
+async function fbList(){
+  if(!fbReady)throw new Error('Firebase not ready');
+  const snap=await fbDb.collection('numbers').orderBy('createdAtMs','desc').limit(300).get();
+  const out=[];snap.forEach(d=>out.push({_src:'fb',id:d.id,...d.data()}));
+  return out;
+}
+async function fbDelete(id){await fbDb.collection('numbers').doc(id).delete();}
+async function fbUpdate(id,patch){await fbDb.collection('numbers').doc(id).update(patch);}
+async function testFb(){
+  const st=document.getElementById('fbStatus');
+  st.textContent='Status: testing…';st.className='status-line';
+  try{
+    initFbFromInput();
+    const list=await fbList();
+    st.textContent='Status: ✓ '+list.length+' records';st.className='status-line ok';
+    renderDataList(list);
+  }catch(e){st.textContent='Status: ✗ '+e.message;st.className='status-line err';}
+}
+
+async function refreshData(){
+  const s=loadSettings();
+  const tasks=[];
+  if(s.dbApiUrl) tasks.push(dbList().then(a=>a.map(x=>({_src:'db',...x}))).catch(()=>[]));
+  if(s.firebaseConfig && s.firebaseConfig.apiKey && s.firebaseConfig.projectId){
+    try{initFbFromInput();}catch(e){console.warn(e);}
+    if(fbReady) tasks.push(fbList().catch(()=>[]));
+  }
+  if(!tasks.length){renderDataList([]);return;}
+  const all=(await Promise.all(tasks)).flat().sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0));
+  renderDataList(all);
+}
+
+function renderDataList(list){
+  const c=document.getElementById('dataList');
+  c.innerHTML='';
+  if(!list.length){c.innerHTML='<div style="text-align:center;font-size:.8rem;color:#7d5c61;padding:14px;">No records</div>';return;}
+  list.forEach(e=>{
+    const id=e.id||e._id||e.key||e.uid;
+    const src=e._src||'db';
+    const num=e.number||e.phone||'—';
+    const meta=(e.data&&(e.data.chat_title||e.data.carrier||e.data.country_name))||e.carrier||e.country_name||'Unknown';
+    const kind=e.kind||(String(num).startsWith('TG:')?'telegram':'number');
+    const card=document.createElement('div');
+    card.style.cssText='background:rgba(36,21,24,.6);border:1px solid rgba(255,0,51,.2);border-radius:10px;padding:10px;margin-bottom:8px;position:relative;';
+    card.innerHTML=`
+      <span style="position:absolute;top:8px;right:8px;font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:4px;${src==='fb'
+        ?'background:rgba(255,190,77,.12);color:#ffbe4d;border:1px solid rgba(255,190,77,.3);'
+        :'background:rgba(255,0,51,.15);color:#ff8aa3;border:1px solid rgba(255,0,51,.3);'}">${src==='fb'?'FIREBASE':'DB'}</span>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:#ff4d6d;font-size:.9rem;padding-right:55px;word-break:break-all;">${num}</div>
+      <div style="font-size:.7rem;color:#7d5c61;margin-top:2px;">${kind} · ${meta}</div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button data-a="edit" style="flex:1;padding:6px;border-radius:7px;border:1px solid rgba(255,0,51,.3);background:rgba(255,0,51,.06);color:#ffd0d8;font-size:.68rem;font-weight:600;">EDIT</button>
+        <button data-a="dl" style="flex:1;padding:6px;border-radius:7px;border:1px solid rgba(255,0,51,.3);background:rgba(255,0,51,.06);color:#ffd0d8;font-size:.68rem;font-weight:600;">DL</button>
+        <button data-a="del" style="flex:1;padding:6px;border-radius:7px;border:1px solid rgba(255,51,85,.4);background:rgba(255,51,85,.06);color:#ff3355;font-size:.68rem;font-weight:600;">DEL</button>
+      </div>`;
+    card.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',async()=>{
+        const ok = await requireUnlock();
+        if(!ok) return;
+        handleRow(b.dataset.a,id,e,src);
+      });
+    });
+    c.appendChild(card);
+  });
+}
+
+async function handleRow(act,id,e,src){
+  if(act==='edit'){
+    const n=prompt('Edit value:',e.number||e.phone||'');
+    if(n===null)return;
+    try{
+      if(src==='fb')await fbUpdate(id,{number:n.trim()});
+      else await dbUpdate(id,{number:n.trim()});
+      showToast('Updated');refreshData();
+    }catch(err){alert('Update failed: '+err.message);}
+  }
+  else if(act==='del'){
+    if(!confirm('Delete this record?'))return;
+    try{
+      if(src==='fb')await fbDelete(id);
+      else await dbDelete(id);
+      showToast('Deleted');refreshData();
+    }catch(err){alert('Delete failed: '+err.message);}
+  }
+  else if(act==='dl'){
+    const blob=new Blob([JSON.stringify(e,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`${src}_${(e.number||e.phone||'x').toString().replace(/[^0-9A-Za-z]/g,'')}_${Date.now()}.json`;
+    a.click();URL.revokeObjectURL(a.href);
+    showToast('Downloaded');
+  }
+}
+
+function clearSession(){
+  if(!confirm('Session clear? API keys hat jaayenge.'))return;
+  try{sessionStorage.removeItem(SETTINGS_KEY);sessionStorage.removeItem('jarvis_sid');}catch{}
+  showToast('Cleared');
+  setTimeout(()=>{location.href='index.html';},900);
+}
+
+function saveAll(){
+  let fbCfg=null;
+  const raw=document.getElementById('fbConfig').value.trim();
+  if(raw){
+    try{fbCfg=JSON.parse(raw);}
+    catch{return alert('Firebase config invalid JSON.');}
+  }
+  const payload={
+    numberApiKey:document.getElementById('numApiKey').value.trim(),
+    numberApiUrl:document.getElementById('numApiUrl').value.trim()||'https://api.numlookupapi.com/v1/validate',
+    telegramToken:document.getElementById('tgToken').value.trim(),
+    telegramChatId:document.getElementById('tgChatId').value.trim(),
+    dbApiUrl:document.getElementById('dbApiUrl').value.trim(),
+    dbApiKey:document.getElementById('dbApiKey').value.trim(),
+    dbAuthMode:document.getElementById('dbAuthMode').value,
+    firebaseConfig:fbCfg
+  };
+  saveSettings(payload);
+  showToast('Saved');
+  setTimeout(()=>{location.href='index.html';},700);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('sid').textContent=SESSION_ID.slice(0,10);
+  const s=loadSettings();
+  if(s.numberApiKey)document.getElementById('numApiKey').value=s.numberApiKey;
+  if(s.numberApiUrl)document.getElementById('numApiUrl').value=s.numberApiUrl;
+  if(s.telegramToken)document.getElementById('tgToken').value=s.telegramToken;
+  if(s.telegramChatId)document.getElementById('tgChatId').value=s.telegramChatId;
+  if(s.dbApiUrl)document.getElementById('dbApiUrl').value=s.dbApiUrl;
+  if(s.dbApiKey)document.getElementById('dbApiKey').value=s.dbApiKey;
+  if(s.dbAuthMode)document.getElementById('dbAuthMode').value=s.dbAuthMode;
+  if(s.firebaseConfig)document.getElementById('fbConfig').value=JSON.stringify(s.firebaseConfig,null,2);
+  updateStatus();
+  if(s.dbApiUrl||s.firebaseConfig)refreshData();
+});
+</script>
+</body>
+</html>
